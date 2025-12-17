@@ -1,22 +1,24 @@
-#include "scanner.hpp"
+#include "parser.hpp"
 
 #include <iostream>
-#include <ostream>
 
 int main(int argc, char *argv[]) {
-  std::string_view program = "int x = 42; return x;";
+  std::string_view program = R"(
+    local x = 10
+    local y = 5
+    local result = x - y - 2
+    return result
+  )";
 
   Scanner scanner{program};
 
   while (true) {
-    Token token = scanner.next();
+    AstNode::Ptr token = Parser::parse(scanner);
 
-    if (token.type() == Token::Type::Eof) {
-      break;
+    if (token) {
+      std::cout << token->toString();
     }
 
-    std::cout << token << "\n";
+    return 0;
   }
-
-  return 0;
 }
