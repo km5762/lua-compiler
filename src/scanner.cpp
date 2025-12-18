@@ -3,27 +3,36 @@
 #include <cctype>
 
 void Scanner::skipWhitespace() {
-  while (std::isspace(static_cast<unsigned char>(peekChar()))) {
+  char c{peekChar()};
+  while (std::isspace(static_cast<unsigned char>(c))) {
     advanceChar();
+    c = peekChar();
   }
 }
 
 Token Scanner::advance() {
   skipWhitespace();
 
-  m_start = m_current;
+  m_startCursor = m_cursor;
+  m_startLine = m_line;
+  m_startPosition = m_position;
+
   char c{advanceChar()};
   if (c == '_' || std::isalpha(static_cast<unsigned char>(c))) {
     std::string_view word{scanWord()};
 
     if (word == "return") {
-      return Token{Token::Type::Return};
-    } else if (word == "int") {
-      return Token{Token::Type::Number};
+      return makeToken(Token::Type::Return);
     } else if (word == "local") {
-      return Token{Token::Type::Local};
+      return makeToken(Token::Type::Local);
+    } else if (word == "or") {
+      return makeToken(Token::Type::Or);
+    } else if (word == "and") {
+      return makeToken(Token::Type::And);
+    } else if (word == "not") {
+      return makeToken(Token::Type::Not);
     } else {
-      return Token{Token::Type::Name, word};
+      return makeToken(Token::Type::Name, word);
     }
   } else if (std::isdigit(static_cast<unsigned char>(c))) {
     return scanNumber();
@@ -31,23 +40,63 @@ Token Scanner::advance() {
 
   switch (c) {
   case '(':
-    return Token{Token::Type::LeftParenthesis};
+    return makeToken(Token::Type::LeftParenthesis);
   case ')':
-    return Token{Token::Type::RightParenthesis};
+    return makeToken(Token::Type::RightParenthesis);
   case '{':
-    return Token{Token::Type::LeftBrace};
+    return makeToken(Token::Type::LeftBrace);
   case '}':
-    return Token{Token::Type::RightBrace};
+    return makeToken(Token::Type::RightBrace);
   case ',':
-    return Token{Token::Type::Comma};
+    return makeToken(Token::Type::Comma);
+  case '+':
+    return makeToken(Token::Type::Plus);
   case '-':
-    return Token{Token::Type::Minus};
+    return makeToken(Token::Type::Minus);
+  case '*':
+    return makeToken(Token::Type::Times);
+  case '^':
+    return makeToken(Token::Type::Power);
+  case '#':
+    return makeToken(Token::Type::Length);
+  case '/':
+    return makeToken(Token::Type::Divide);
+  case '%':
+    return makeToken(Token::Type::Modulo);
   case '=':
-    return Token{Token::Type::Assign};
+    if (peekChar() == '=') {
+      advanceChar();
+      return makeToken(Token::Type::Equal);
+    }
+    return makeToken(Token::Type::Assign);
+  case '<':
+    if (peekChar() == '=') {
+      advanceChar();
+      return makeToken(Token::Type::LessThanOrEqual);
+    }
+    return makeToken(Token::Type::LessThan);
+  case '>':
+    if (peekChar() == '=') {
+      advanceChar();
+      return makeToken(Token::Type::GreaterThanOrEqual);
+    }
+    return makeToken(Token::Type::GreaterThan);
+  case '~':
+    if (peekChar() == '=') {
+      advanceChar();
+      return makeToken(Token::Type::NotEqual);
+    }
+    return makeToken(Token::Type::Invalid);
+  case '.':
+    if (peekChar() == '.') {
+      advanceChar();
+      return makeToken(Token::Type::Concatenate);
+    }
+    return makeToken(Token::Type::Dot);
   case '\0':
-    return Token{Token::Type::Eof};
+    return makeToken(Token::Type::Eof);
   default:
-    return Token{Token::Type::Invalid};
+    return makeToken(Token::Type::Invalid);
   }
 }
 
@@ -61,7 +110,7 @@ std::string_view Scanner::scanWord() {
     advanceChar();
   }
 
-  return std::string_view{&m_text[m_start], m_current - m_start};
+  return std::string_view{&m_text[m_startCursor], m_cursor - m_startCursor};
 }
 
 Token Scanner::scanNumber() {
@@ -75,6 +124,5 @@ Token Scanner::scanNumber() {
     advanceChar();
   }
 
-  return {Token::Type::Number,
-          std::string_view{&m_text[m_start], m_current - m_start}};
+  return makeToken(Token::Type::Number);
 }

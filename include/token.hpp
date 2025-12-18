@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ostream>
 #include <string_view>
 
@@ -10,7 +12,24 @@ public:
     Return,
     Number,
     Assign,
+    Or,
+    And,
+    LessThan,
+    GreaterThan,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
+    NotEqual,
+    Equal,
+    Concatenate,
+    Plus,
     Minus,
+    Times,
+    Divide,
+    Modulo,
+    Not,
+    Length,
+    Power,
+    Dot,
     LeftParenthesis,
     RightParenthesis,
     LeftBrace,
@@ -21,31 +40,65 @@ public:
 
   static std::string_view toString(Token::Type type) {
     switch (type) {
-    case Token::Type::Invalid:
+    case Type::Invalid:
       return "Invalid";
-    case Token::Type::Name:
+    case Type::Name:
       return "Name";
-    case Token::Type::Local:
+    case Type::Local:
       return "Local";
-    case Token::Type::Return:
+    case Type::Return:
       return "Return";
-    case Token::Type::Number:
+    case Type::Number:
       return "Number";
-    case Token::Type::Assign:
+    case Type::Assign:
       return "Assign";
-    case Token::Type::Minus:
+    case Type::Or:
+      return "Or";
+    case Type::And:
+      return "And";
+    case Type::LessThan:
+      return "LessThan";
+    case Type::GreaterThan:
+      return "GreaterThan";
+    case Type::LessThanOrEqual:
+      return "LessThanOrEqual";
+    case Type::GreaterThanOrEqual:
+      return "GreaterThanOrEqaul";
+    case Type::NotEqual:
+      return "NotEqual";
+    case Type::Equal:
+      return "Equal";
+    case Type::Concatenate:
+      return "Concatenate";
+    case Type::Plus:
+      return "Plus";
+    case Type::Minus:
       return "Minus";
-    case Token::Type::LeftParenthesis:
+    case Type::Times:
+      return "Times";
+    case Type::Divide:
+      return "Divide";
+    case Type::Modulo:
+      return "Modulo";
+    case Type::Not:
+      return "Not";
+    case Type::Length:
+      return "Length";
+    case Type::Power:
+      return "Power";
+    case Type::Dot:
+      return "Dot";
+    case Type::LeftParenthesis:
       return "LeftParenthesis";
-    case Token::Type::RightParenthesis:
+    case Type::RightParenthesis:
       return "RightParenthesis";
-    case Token::Type::LeftBrace:
+    case Type::LeftBrace:
       return "LeftBrace";
-    case Token::Type::RightBrace:
+    case Type::RightBrace:
       return "RightBrace";
-    case Token::Type::Comma:
+    case Type::Comma:
       return "Comma";
-    case Token::Type::Eof:
+    case Type::Eof:
       return "Eof";
     }
   }
@@ -65,4 +118,6 @@ public:
 
   Type type{};
   std::string_view data{};
+  std::size_t line{};
+  std::size_t position{};
 };

@@ -36,8 +36,7 @@ AstNode::Ptr Parser::parseChunk() {
 }
 
 AstNode::Ptr Parser::parseStat() {
-  if (check(Token::Type::Local)) {
-    m_scanner.get().advance();
+  if (match(Token::Type::Local)) {
     std::vector<std::string_view> nameList{parseNameList()};
     std::vector<AstNode::Ptr> expList{};
 
@@ -49,7 +48,11 @@ AstNode::Ptr Parser::parseStat() {
     return std::make_unique<AstNode>(
         AstNode::LocalDeclaration{nameList, std::move(expList)});
   } else {
-    throw UnexpectedToken{m_scanner.get().peek().type, Token::Type::Local};
+    std::vector<AstNode::Ptr> varList{parseVarList()};
+    consume(Token::Type::Assign);
+    std::vector<AstNode::Ptr> expList{parseExpList()};
+    return std::make_unique<AstNode>(
+        AstNode::Assignment{std::move(varList), std::move(expList)});
   }
 
   return nullptr;
@@ -60,47 +63,78 @@ AstNode::Ptr Parser::parseLastStat() {
   return std::make_unique<AstNode>(AstNode::Return{parseExpList()});
 }
 
-std::vector<std::string_view> Parser::parseNameList() {
-  std::vector<std::string_view> nameList{consume(Token::Type::Name).data};
-
-  while (check(Token::Type::Comma)) {
-    m_scanner.get().advance();
-    nameList.emplace_back(consume(Token::Type::Name).data);
+AstNode::Ptr Parser::parseVar() {
+  AstNode::Ptr prefix{parsePrimary()};
+  while (true) {
+    if (check(Token::Type::Dot)) {
+      Token token{m_scanner.get().advance()};
+      return std::make_unique<AstNode>(AstNode::Access{token.data});
+    } else {
+      break;
+    }
   }
+  return prefix;
+}
 
-  return nameList;
+std::vector<AstNode::Ptr> Parser::parseVarList() {
+  return parseList<&Parser::parseVar>();
+}
+
+std::vector<std::string_view> Parser::parseNameList() {
+  return parseList<&Parser::parseName>();
 }
 
 std::vector<AstNode::Ptr> Parser::parseExpList() {
-  std::vector<AstNode::Ptr> expList{};
-  expList.emplace_back(parseExp());
-
-  while (check(Token::Type::Comma)) {
-    m_scanner.get().advance();
-    expList.emplace_back(parseExp());
-  }
-
-  return expList;
+  return parseList<&Parser::parseExp>();
 }
 
-AstNode::Ptr Parser::parseExp() { return parseAdditive(); }
+AstNode::Ptr Parser::parseExp() { return parseOr(); }
+
+AstNode::Ptr Parser::parseOr() {
+  return parseLeftBinaryOperation<&Parser::parseAnd>(Token::Type::Or);
+}
+
+AstNode::Ptr Parser::parseAnd() {
+  return parseLeftBinaryOperation<&Parser::parseComparison>(Token::Type::And);
+}
+
+AstNode::Ptr Parser::parseComparison() {
+  return parseLeftBinaryOperation<&Parser::parseConcatenation>(
+      Token::Type::LessThan, Token::Type::LessThanOrEqual,
+      Token::Type::GreaterThan, Token::Type::GreaterThanOrEqual,
+      Token::Type::NotEqual, Token::Type::Equal);
+}
+
+AstNode::Ptr Parser::parseConcatenation() {
+  return parseRightBinaryOperation<&Parser::parseAdditive>(
+      Token::Type::Concatenate);
+}
 
 AstNode::Ptr Parser::parseAdditive() {
-  AstNode::Ptr left{parsePrimary()};
+  return parseLeftBinaryOperation<&Parser::parseMultiplicative>(
+      Token::Type::Plus, Token::Type::Minus);
+}
 
-  while (check(Token::Type::Minus)) {
+AstNode::Ptr Parser::parseMultiplicative() {
+  return parseLeftBinaryOperation<&Parser::parseUnary>(
+      Token::Type::Times, Token::Type::Divide, Token::Type::Modulo);
+}
+
+AstNode::Ptr Parser::parseUnary() {
+  if (check(Token::Type::Not, Token::Type::Length, Token::Type::Minus)) {
     Token token{m_scanner.get().advance()};
-    AstNode::Ptr right{parsePrimary()};
-    left = std::make_unique<AstNode>(
-        AstNode::BinaryOperator{token, {std::move(left), std::move(right)}});
+    return std::make_unique<AstNode>(
+        AstNode::UnaryOperator{token, parseUnary()});
   }
+  return parsePower();
+}
 
-  return left;
+AstNode::Ptr Parser::parsePower() {
+  return parseRightBinaryOperation<&Parser::parsePrimary>(Token::Type::Power);
 }
 
 AstNode::Ptr Parser::parsePrimary() {
-  if (check(Token::Type::LeftParenthesis)) {
-    m_scanner.get().advance();
+  if (match(Token::Type::LeftParenthesis)) {
     AstNode::Ptr exp{parseExp()};
     consume(Token::Type::RightParenthesis);
     return exp;
@@ -111,12 +145,14 @@ AstNode::Ptr Parser::parsePrimary() {
     auto [ptr, ec] = std::from_chars(
         token.data.data(), token.data.data() + token.data.size(), number);
     if (ptr != token.data.end() || ec != std::errc{}) {
-      throw MalformedNumber{token.data};
+      throw MalformedNumber{token};
     }
     return std::make_unique<AstNode>(AstNode::Number{number});
   } else if (check(Token::Type::Name)) {
     Token token{m_scanner.get().advance()};
     return std::make_unique<AstNode>(AstNode::Name{token.data});
   }
+  throw UnexpectedToken{m_scanner.get().peek(), Token::Type::LeftParenthesis,
+                        Token::Type::Name};
   return nullptr;
 }
