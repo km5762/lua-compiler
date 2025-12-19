@@ -37,6 +37,7 @@ public:
   struct Return {
     std::vector<Ptr> values;
   };
+  struct Break {};
   struct Number {
     double value{};
   };
@@ -44,14 +45,26 @@ public:
     std::string_view name{};
   };
   struct Subscript {
-    Token index{};
+    Ptr operand{};
+    Ptr index{};
   };
   struct Access {
+    Ptr operand{};
     std::string_view member{};
   };
-  using Data = std::variant<std::monostate, Block, Chunk, LocalDeclaration,
-                            Assignment, BinaryOperator, UnaryOperator, Return,
-                            Number, Name, Subscript, Access>;
+  struct FunctionCall {
+    Ptr operand{};
+    std::vector<Ptr> arguments{};
+  };
+  struct MethodCall {
+    Ptr operand{};
+    std::vector<Ptr> arguments{};
+  };
+
+  using Data =
+      std::variant<std::monostate, Block, Chunk, LocalDeclaration, Assignment,
+                   BinaryOperator, UnaryOperator, Return, Break, Number, Name,
+                   Subscript, Access, FunctionCall, MethodCall>;
 
   nlohmann::json toJson() const;
   Data data{};

@@ -4,18 +4,22 @@
 #include <iostream>
 
 int main(int argc, char *argv[]) {
-  std::string_view program = R"(local a, b, c = 1, 2 + 3 * 4, -5
-  a, b = b ^ 2, a + c
-  c = a + b * 2 - 3 ^ 2
-  a = -a
-  local cmp1 = a < b
-  local cmp2 = b >= c
-  local cmp3 = a == c
-  local cmp4 = a ~= b
-  local logic = cmp1 and cmp2 or cmp3
-  local concat = a .. b .. c
-  local expr = (a + b) * (c - 1) ^ 2 and -c or a + b .. c
-  return a, b, c, logic, concat, expr)";
+  std::string_view program = R"(
+local a, b, c = 1, 2 + 3 * 4, -(5 ^ 2)
+local x, y
+x = a + b
+y = x % 3
+local flag = a < b and b ~= c or not y
+local z = a .. b .. c
+local p = (a + b) * c
+obj.value = arr[1 + 2] * obj.other
+result = obj.inner.field[10].leaf
+foo(a, b, c)
+bar((a + b) * c, not flag)
+obj:method(a, b + c)
+obj:getInner().compute(a ^ b, -c)
+    break
+  )";
 
   Scanner scanner{program};
   AstNode::Ptr ast{Parser::parse(scanner)};

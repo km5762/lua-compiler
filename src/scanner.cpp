@@ -1,4 +1,5 @@
 #include "scanner.hpp"
+#include "token.hpp"
 
 #include <cctype>
 
@@ -31,6 +32,8 @@ Token Scanner::advance() {
       return makeToken(Token::Type::And);
     } else if (word == "not") {
       return makeToken(Token::Type::Not);
+    } else if (word == "break") {
+      return makeToken(Token::Type::Break);
     } else {
       return makeToken(Token::Type::Name, word);
     }
@@ -47,8 +50,14 @@ Token Scanner::advance() {
     return makeToken(Token::Type::LeftBrace);
   case '}':
     return makeToken(Token::Type::RightBrace);
+  case '[':
+    return makeToken(Token::Type::LeftBracket);
+  case ']':
+    return makeToken(Token::Type::RightBracket);
   case ',':
     return makeToken(Token::Type::Comma);
+  case ':':
+    return makeToken(Token::Type::Colon);
   case '+':
     return makeToken(Token::Type::Plus);
   case '-':

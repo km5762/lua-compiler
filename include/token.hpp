@@ -10,6 +10,7 @@ public:
     Name,
     Local,
     Return,
+    Break,
     Number,
     Assign,
     Or,
@@ -34,7 +35,10 @@ public:
     RightParenthesis,
     LeftBrace,
     RightBrace,
+    LeftBracket,
+    RightBracket,
     Comma,
+    Colon,
     Eof,
   };
 
@@ -48,6 +52,8 @@ public:
       return "Local";
     case Type::Return:
       return "Return";
+    case Type::Break:
+      return "Break";
     case Type::Number:
       return "Number";
     case Type::Assign:
@@ -96,8 +102,14 @@ public:
       return "LeftBrace";
     case Type::RightBrace:
       return "RightBrace";
+    case Type::LeftBracket:
+      return "LeftBracket";
+    case Type::RightBracket:
+      return "RightBracket";
     case Type::Comma:
       return "Comma";
+    case Type::Colon:
+      return "Colon";
     case Type::Eof:
       return "Eof";
     }

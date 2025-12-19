@@ -1,5 +1,7 @@
 #include "parser.hpp"
+#include "ast_node.hpp"
 #include "scanner.hpp"
+#include "token.hpp"
 
 #include <charconv>
 #include <iostream>
@@ -7,12 +9,7 @@
 
 AstNode::Ptr Parser::parse(Scanner &scanner) {
   Parser parser{scanner};
-  try {
-    return parser.parseChunk();
-  } catch (const UnexpectedToken &error) {
-    std::cerr << error.what() << std::endl;
-    return nullptr;
-  }
+  return parser.parseBlock();
 }
 
 AstNode::Ptr Parser::parseBlock() {
@@ -23,16 +20,17 @@ AstNode::Ptr Parser::parseChunk() {
   std::vector<AstNode::Ptr> statements{};
   AstNode::Ptr lastStatement{};
 
-  while (!eof() && !check(Token::Type::Return)) {
-    statements.emplace_back(parseStat());
-  }
-
-  if (check(Token::Type::Return)) {
-    lastStatement = parseLastStat();
+  while (!eof() && !check(Token::Type::Return, Token::Type::Break)) {
+    try {
+      statements.emplace_back(parseStat());
+    } catch (const ParseError &error) {
+      std::cerr << error.what() << std::endl;
+      return std::make_unique<AstNode>(AstNode::Chunk{std::move(statements)});
+    }
   }
 
   return std::make_unique<AstNode>(
-      AstNode::Chunk{std::move(statements), std::move(lastStatement)});
+      AstNode::Chunk{std::move(statements), parseLastStat()});
 }
 
 AstNode::Ptr Parser::parseStat() {
@@ -47,45 +45,47 @@ AstNode::Ptr Parser::parseStat() {
 
     return std::make_unique<AstNode>(
         AstNode::LocalDeclaration{nameList, std::move(expList)});
-  } else {
-    std::vector<AstNode::Ptr> varList{parseVarList()};
+  }
+  AstNode::Ptr prefix{parsePrefixExp()};
+  if (match(Token::Type::Comma)) {
+    std::vector<AstNode::Ptr> varList{parseVarList(std::move(prefix))};
     consume(Token::Type::Assign);
     std::vector<AstNode::Ptr> expList{parseExpList()};
-    return std::make_unique<AstNode>(
+    prefix = std::make_unique<AstNode>(
         AstNode::Assignment{std::move(varList), std::move(expList)});
+  } else if (match(Token::Type::Assign)) {
+    std::vector<AstNode::Ptr> vars{};
+    vars.push_back(std::move(prefix));
+    std::vector<AstNode::Ptr> values{};
+    values.push_back(parseExp());
+    prefix = std::make_unique<AstNode>(
+        AstNode::Assignment{std::move(vars), std::move(values)});
   }
 
-  return nullptr;
-}
-
-AstNode::Ptr Parser::parseLastStat() {
-  m_scanner.get().advance();
-  return std::make_unique<AstNode>(AstNode::Return{parseExpList()});
-}
-
-AstNode::Ptr Parser::parseVar() {
-  AstNode::Ptr prefix{parsePrimary()};
-  while (true) {
-    if (check(Token::Type::Dot)) {
-      Token token{m_scanner.get().advance()};
-      return std::make_unique<AstNode>(AstNode::Access{token.data});
-    } else {
-      break;
-    }
-  }
   return prefix;
 }
 
-std::vector<AstNode::Ptr> Parser::parseVarList() {
-  return parseList<&Parser::parseVar>();
+AstNode::Ptr Parser::parseLastStat() {
+  if (match(Token::Type::Return)) {
+    return std::make_unique<AstNode>(AstNode::Return{parseExpList()});
+  }
+  consume(Token::Type::Break);
+  m_scanner.get().advance();
+  return std::make_unique<AstNode>(AstNode::Break{});
+}
+
+std::vector<AstNode::Ptr>
+Parser::parseVarList(std::optional<AstNode::Ptr> initial) {
+  return parseList<&Parser::parsePrefixExp>(std::move(initial));
 }
 
 std::vector<std::string_view> Parser::parseNameList() {
   return parseList<&Parser::parseName>();
 }
 
-std::vector<AstNode::Ptr> Parser::parseExpList() {
-  return parseList<&Parser::parseExp>();
+std::vector<AstNode::Ptr>
+Parser::parseExpList(std::optional<AstNode::Ptr> initial) {
+  return parseList<&Parser::parseExp>(std::move(initial));
 }
 
 AstNode::Ptr Parser::parseExp() { return parseOr(); }
@@ -134,12 +134,7 @@ AstNode::Ptr Parser::parsePower() {
 }
 
 AstNode::Ptr Parser::parsePrimary() {
-  if (match(Token::Type::LeftParenthesis)) {
-    AstNode::Ptr exp{parseExp()};
-    consume(Token::Type::RightParenthesis);
-    return exp;
-
-  } else if (check(Token::Type::Number)) {
+  if (check(Token::Type::Number)) {
     Token token{m_scanner.get().advance()};
     double number{};
     auto [ptr, ec] = std::from_chars(
@@ -148,11 +143,61 @@ AstNode::Ptr Parser::parsePrimary() {
       throw MalformedNumber{token};
     }
     return std::make_unique<AstNode>(AstNode::Number{number});
-  } else if (check(Token::Type::Name)) {
-    Token token{m_scanner.get().advance()};
-    return std::make_unique<AstNode>(AstNode::Name{token.data});
+  } else {
+    return parsePrefixExp();
   }
   throw UnexpectedToken{m_scanner.get().peek(), Token::Type::LeftParenthesis,
                         Token::Type::Name};
   return nullptr;
+}
+
+AstNode::Ptr Parser::parsePrefixExp() {
+  AstNode::Ptr prefix{};
+  if (match(Token::Type::LeftParenthesis)) {
+    prefix = parseExp();
+    consume(Token::Type::RightParenthesis);
+  } else if (check(Token::Type::Name)) {
+    Token token{m_scanner.get().advance()};
+    prefix = std::make_unique<AstNode>(AstNode::Name{token.data});
+  } else {
+    throw UnexpectedToken{m_scanner.get().peek(), Token::Type::LeftParenthesis,
+                          Token::Type::Name};
+  }
+
+  while (true) {
+    if (match(Token::Type::LeftBracket)) {
+      prefix = std::make_unique<AstNode>(
+          AstNode::Subscript{std::move(prefix), parseExp()});
+      consume(Token::Type::RightBracket);
+    } else if (match(Token::Type::Dot)) {
+      Token token{consume(Token::Type::Name)};
+      prefix = std::make_unique<AstNode>(
+          AstNode::Access{std::move(prefix), token.data});
+    } else if (match(Token::Type::LeftParenthesis)) {
+      prefix = std::make_unique<AstNode>(
+          AstNode::FunctionCall{std::move(prefix), parseArguments()});
+    } else if (match(Token::Type::Colon)) {
+      Token token{consume(Token::Type::Name)};
+      prefix = std::make_unique<AstNode>(
+          AstNode::Access{std::move(prefix), token.data});
+      consume(Token::Type::LeftParenthesis);
+      prefix = std::make_unique<AstNode>(
+          AstNode::MethodCall{std::move(prefix), parseArguments()});
+    } else {
+      break;
+    }
+  }
+
+  return prefix;
+}
+
+std::vector<AstNode::Ptr> Parser::parseArguments() {
+  std::vector<AstNode::Ptr> arguments{};
+
+  if (!match(Token::Type::RightParenthesis)) {
+    arguments = parseExpList();
+    consume(Token::Type::RightParenthesis);
+  }
+
+  return arguments;
 }

@@ -5,11 +5,17 @@
 
 #include <format>
 
-class UnexpectedToken : public std::runtime_error {
+class ParseError : public std::runtime_error {
+public:
+  ParseError(Token token, std::string_view message)
+      : std::runtime_error{
+            std::format("{}:{}: {}", token.line, token.position, message)} {}
+};
+class UnexpectedToken : public ParseError {
 public:
   template <typename... T>
   UnexpectedToken(Token got, T... expected)
-      : std::runtime_error{buildMessage(got, expected...)} {}
+      : ParseError{got, buildMessage(got, expected...)} {}
 
 private:
   template <typename... T>
@@ -19,16 +25,15 @@ private:
     if (!expectedStr.empty())
       expectedStr.resize(expectedStr.size() - 2);
 
-    return std::format("{}:{}: Unexpected token '{}'. Expected one of: {}",
-                       got.line, got.position, got.data, expectedStr);
+    return std::format("Unexpected token '{}'. Expected one of: {}", got.data,
+                       expectedStr);
   }
 };
-class MalformedNumber : public std::runtime_error {
+class MalformedNumber : public ParseError {
 public:
   explicit MalformedNumber(Token token)
-      : std::runtime_error{std::format("{}:{}: Unable to parse number: '{}'",
-                                       token.line, token.position,
-                                       token.data)} {}
+      : ParseError{token,
+                   std::format("Unable to parse number: '{}'", token.data)} {}
 };
 
 class Parser {
@@ -88,16 +93,27 @@ private:
   AstNode::Ptr parseChunk();
   AstNode::Ptr parseStat();
   AstNode::Ptr parseLastStat();
-  AstNode::Ptr parseVar();
   std::vector<std::string_view> parseNameList();
   std::string_view parseName() { return consume(Token::Type::Name).data; }
-  std::vector<AstNode::Ptr> parseVarList();
-  std::vector<AstNode::Ptr> parseExpList();
+  std::vector<AstNode::Ptr>
+  parseVarList(std::optional<AstNode::Ptr> initial = std::nullopt);
+  std::vector<AstNode::Ptr>
+  parseExpList(std::optional<AstNode::Ptr> initial = std::nullopt);
+  std::vector<AstNode::Ptr> parseArguments();
   AstNode::Ptr parseExp();
-  template <auto ParseFunc> auto parseList() {
+  template <auto ParseFunc>
+  auto
+  parseList(std::optional<std::invoke_result_t<decltype(ParseFunc), Parser *>>
+                initial = std::nullopt) {
     using T = std::invoke_result_t<decltype(ParseFunc), Parser *>;
-    std::vector<T> list{};
-    list.emplace_back((this->*ParseFunc)());
+
+    std::vector<T> list;
+
+    if (initial) {
+      list.emplace_back(std::move(*initial));
+    } else {
+      list.emplace_back((this->*ParseFunc)());
+    }
 
     while (match(Token::Type::Comma)) {
       list.emplace_back((this->*ParseFunc)());
@@ -140,4 +156,5 @@ private:
   AstNode::Ptr parseUnary();
   AstNode::Ptr parsePower();
   AstNode::Ptr parsePrimary();
+  AstNode::Ptr parsePrefixExp();
 };

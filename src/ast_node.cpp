@@ -1,4 +1,5 @@
 #include "ast_node.hpp"
+#include "nlohmann/json_fwd.hpp"
 
 namespace {
 nlohmann::json toJson(const std::vector<AstNode::Ptr> &nodes) {
@@ -56,15 +57,26 @@ struct Visitor {
   void operator()(const AstNode::Return &node) {
     json["Return"] = {{"values", toJson(node.values)}};
   }
+  void operator()(const AstNode::Break &node) { json["Break"] = {}; }
   void operator()(const AstNode::Number &node) { json["Number"] = node.value; }
   void operator()(const AstNode::Name &node) {
     json["Name"] = std::string{node.name};
   }
   void operator()(const AstNode::Subscript &node) {
-    json["Subscript"] = node.index.data;
+    json["Subscript"] = {{"index", node.index->toJson()},
+                         {"operand", node.operand->toJson()}};
   }
   void operator()(const AstNode::Access &node) {
-    json["Access"] = std::string{node.member};
+    json["Access"] = {{"member", node.member},
+                      {"operand", node.operand->toJson()}};
+  }
+  void operator()(const AstNode::FunctionCall &node) {
+    json["FunctionCall"] = {{"arguments", toJson(node.arguments)},
+                            {"operand", node.operand->toJson()}};
+  }
+  void operator()(const AstNode::MethodCall &node) {
+    json["MethodCall"] = {{"arguments", toJson(node.arguments)},
+                          {"operand", node.operand->toJson()}};
   }
 };
 } // namespace
