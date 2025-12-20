@@ -4,6 +4,7 @@
 #include "scanner.hpp"
 
 #include <format>
+#include <memory_resource>
 
 class ParseError : public std::runtime_error {
 public:
@@ -38,12 +39,25 @@ public:
 
 class Parser {
 public:
-  Parser(Scanner &scanner) : m_scanner{scanner} {};
+  Parser(Scanner &scanner, std::pmr::memory_resource &allocator)
+      : m_scanner{scanner}, m_allocator{allocator} {};
 
-  static AstNode::Ptr parse(Scanner &scanner);
+  static AstNode::Ptr parse(Scanner &scanner,
+                            std::pmr::memory_resource &allocator);
 
 private:
   std::reference_wrapper<Scanner> m_scanner;
+  std::reference_wrapper<std::pmr::memory_resource> m_allocator;
+
+  template <typename T, typename... Args> T *allocate(Args &&...args) {
+    void *buffer{m_allocator.get().allocate(sizeof(T), alignof(T))};
+    if (!buffer) {
+      return nullptr;
+    }
+
+    T *ptr{new (buffer) T{args...}};
+    return ptr;
+  }
 
   template <typename... T> bool matches(Token::Type type, T... types) {
     return ((type == types) || ...);
@@ -128,7 +142,7 @@ private:
     while (check(types...)) {
       Token token{m_scanner.get().advance()};
       AstNode::Ptr right{(this->*ParseFunc)()};
-      left = std::make_unique<AstNode>(
+      left = allocate<AstNode>(
           AstNode::BinaryOperator{token, {std::move(left), std::move(right)}});
     }
 
@@ -141,7 +155,7 @@ private:
     if (check(types...)) {
       Token token{m_scanner.get().advance()};
       AstNode::Ptr right{parseRightBinaryOperation<ParseFunc>(types...)};
-      left = std::make_unique<AstNode>(
+      left = allocate<AstNode>(
           AstNode::BinaryOperator{token, {std::move(left), std::move(right)}});
     }
 

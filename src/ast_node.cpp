@@ -74,10 +74,6 @@ struct Visitor {
     json["FunctionCall"] = {{"arguments", toJson(node.arguments)},
                             {"operand", node.operand->toJson()}};
   }
-  void operator()(const AstNode::MethodCall &node) {
-    json["MethodCall"] = {{"arguments", toJson(node.arguments)},
-                          {"operand", node.operand->toJson()}};
-  }
 };
 } // namespace
 

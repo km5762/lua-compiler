@@ -12,6 +12,9 @@ public:
     Return,
     Break,
     Number,
+    String,
+    False,
+    True,
     Assign,
     Or,
     And,
@@ -39,6 +42,7 @@ public:
     RightBracket,
     Comma,
     Colon,
+    Semicolon,
     Eof,
   };
 
@@ -110,6 +114,8 @@ public:
       return "Comma";
     case Type::Colon:
       return "Colon";
+    case Type::Semicolon:
+      return "Semicolon";
     case Type::Eof:
       return "Eof";
     }

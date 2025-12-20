@@ -5,15 +5,16 @@
 
 #include <charconv>
 #include <iostream>
-#include <memory>
+#include <memory_resource>
 
-AstNode::Ptr Parser::parse(Scanner &scanner) {
-  Parser parser{scanner};
+AstNode::Ptr Parser::parse(Scanner &scanner,
+                           std::pmr::memory_resource &allocator) {
+  Parser parser{scanner, allocator};
   return parser.parseBlock();
 }
 
 AstNode::Ptr Parser::parseBlock() {
-  return std::make_unique<AstNode>(AstNode::Block{parseChunk()});
+  return allocate<AstNode>(AstNode::Block{parseChunk()});
 }
 
 AstNode::Ptr Parser::parseChunk() {
@@ -23,14 +24,16 @@ AstNode::Ptr Parser::parseChunk() {
   while (!eof() && !check(Token::Type::Return, Token::Type::Break)) {
     try {
       statements.emplace_back(parseStat());
+      match(Token::Type::Semicolon);
     } catch (const ParseError &error) {
       std::cerr << error.what() << std::endl;
-      return std::make_unique<AstNode>(AstNode::Chunk{std::move(statements)});
+      return allocate<AstNode>(AstNode::Chunk{statements});
     }
   }
 
-  return std::make_unique<AstNode>(
-      AstNode::Chunk{std::move(statements), parseLastStat()});
+  AstNode::Ptr lastStat{parseLastStat()};
+  match(Token::Type::Semicolon);
+  return allocate<AstNode>(AstNode::Chunk{statements, lastStat});
 }
 
 AstNode::Ptr Parser::parseStat() {
@@ -43,23 +46,21 @@ AstNode::Ptr Parser::parseStat() {
       expList = parseExpList();
     }
 
-    return std::make_unique<AstNode>(
-        AstNode::LocalDeclaration{nameList, std::move(expList)});
+    return allocate<AstNode>(AstNode::LocalDeclaration{nameList, expList});
   }
+
   AstNode::Ptr prefix{parsePrefixExp()};
   if (match(Token::Type::Comma)) {
-    std::vector<AstNode::Ptr> varList{parseVarList(std::move(prefix))};
+    std::vector<AstNode::Ptr> varList{parseVarList(prefix)};
     consume(Token::Type::Assign);
     std::vector<AstNode::Ptr> expList{parseExpList()};
-    prefix = std::make_unique<AstNode>(
-        AstNode::Assignment{std::move(varList), std::move(expList)});
+    prefix = allocate<AstNode>(AstNode::Assignment{varList, expList});
   } else if (match(Token::Type::Assign)) {
     std::vector<AstNode::Ptr> vars{};
-    vars.push_back(std::move(prefix));
+    vars.push_back(prefix);
     std::vector<AstNode::Ptr> values{};
     values.push_back(parseExp());
-    prefix = std::make_unique<AstNode>(
-        AstNode::Assignment{std::move(vars), std::move(values)});
+    prefix = allocate<AstNode>(AstNode::Assignment{vars, values});
   }
 
   return prefix;
@@ -67,16 +68,16 @@ AstNode::Ptr Parser::parseStat() {
 
 AstNode::Ptr Parser::parseLastStat() {
   if (match(Token::Type::Return)) {
-    return std::make_unique<AstNode>(AstNode::Return{parseExpList()});
+    return allocate<AstNode>(AstNode::Return{parseExpList()});
   }
   consume(Token::Type::Break);
   m_scanner.get().advance();
-  return std::make_unique<AstNode>(AstNode::Break{});
+  return allocate<AstNode>(AstNode::Break{});
 }
 
 std::vector<AstNode::Ptr>
 Parser::parseVarList(std::optional<AstNode::Ptr> initial) {
-  return parseList<&Parser::parsePrefixExp>(std::move(initial));
+  return parseList<&Parser::parsePrefixExp>(initial);
 }
 
 std::vector<std::string_view> Parser::parseNameList() {
@@ -85,7 +86,7 @@ std::vector<std::string_view> Parser::parseNameList() {
 
 std::vector<AstNode::Ptr>
 Parser::parseExpList(std::optional<AstNode::Ptr> initial) {
-  return parseList<&Parser::parseExp>(std::move(initial));
+  return parseList<&Parser::parseExp>(initial);
 }
 
 AstNode::Ptr Parser::parseExp() { return parseOr(); }
@@ -123,8 +124,7 @@ AstNode::Ptr Parser::parseMultiplicative() {
 AstNode::Ptr Parser::parseUnary() {
   if (check(Token::Type::Not, Token::Type::Length, Token::Type::Minus)) {
     Token token{m_scanner.get().advance()};
-    return std::make_unique<AstNode>(
-        AstNode::UnaryOperator{token, parseUnary()});
+    return allocate<AstNode>(AstNode::UnaryOperator{token, parseUnary()});
   }
   return parsePower();
 }
@@ -142,7 +142,7 @@ AstNode::Ptr Parser::parsePrimary() {
     if (ptr != token.data.end() || ec != std::errc{}) {
       throw MalformedNumber{token};
     }
-    return std::make_unique<AstNode>(AstNode::Number{number});
+    return allocate<AstNode>(AstNode::Number{number});
   } else {
     return parsePrefixExp();
   }
@@ -158,7 +158,7 @@ AstNode::Ptr Parser::parsePrefixExp() {
     consume(Token::Type::RightParenthesis);
   } else if (check(Token::Type::Name)) {
     Token token{m_scanner.get().advance()};
-    prefix = std::make_unique<AstNode>(AstNode::Name{token.data});
+    prefix = allocate<AstNode>(AstNode::Name{token.data});
   } else {
     throw UnexpectedToken{m_scanner.get().peek(), Token::Type::LeftParenthesis,
                           Token::Type::Name};
@@ -166,23 +166,20 @@ AstNode::Ptr Parser::parsePrefixExp() {
 
   while (true) {
     if (match(Token::Type::LeftBracket)) {
-      prefix = std::make_unique<AstNode>(
-          AstNode::Subscript{std::move(prefix), parseExp()});
+      prefix = allocate<AstNode>(AstNode::Subscript{prefix, parseExp()});
       consume(Token::Type::RightBracket);
     } else if (match(Token::Type::Dot)) {
       Token token{consume(Token::Type::Name)};
-      prefix = std::make_unique<AstNode>(
-          AstNode::Access{std::move(prefix), token.data});
+      prefix = allocate<AstNode>(AstNode::Access{prefix, token.data});
     } else if (match(Token::Type::LeftParenthesis)) {
-      prefix = std::make_unique<AstNode>(
-          AstNode::FunctionCall{std::move(prefix), parseArguments()});
+      prefix =
+          allocate<AstNode>(AstNode::FunctionCall{prefix, parseArguments()});
     } else if (match(Token::Type::Colon)) {
       Token token{consume(Token::Type::Name)};
-      prefix = std::make_unique<AstNode>(
-          AstNode::Access{std::move(prefix), token.data});
+      prefix = allocate<AstNode>(AstNode::Access{prefix, token.data});
       consume(Token::Type::LeftParenthesis);
-      prefix = std::make_unique<AstNode>(
-          AstNode::MethodCall{std::move(prefix), parseArguments()});
+      prefix =
+          allocate<AstNode>(AstNode::FunctionCall{prefix, parseArguments()});
     } else {
       break;
     }

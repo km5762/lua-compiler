@@ -56,6 +56,8 @@ Token Scanner::advance() {
     return makeToken(Token::Type::RightBracket);
   case ',':
     return makeToken(Token::Type::Comma);
+  case ';':
+    return makeToken(Token::Type::Semicolon);
   case ':':
     return makeToken(Token::Type::Colon);
   case '+':

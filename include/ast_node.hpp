@@ -4,13 +4,12 @@
 
 #include <nlohmann/json.hpp>
 
-#include <memory>
 #include <variant>
 #include <vector>
 
 struct AstNode {
 public:
-  using Ptr = std::unique_ptr<AstNode>;
+  using Ptr = AstNode *;
   struct Block {
     Ptr chunk{};
   };
@@ -56,15 +55,11 @@ public:
     Ptr operand{};
     std::vector<Ptr> arguments{};
   };
-  struct MethodCall {
-    Ptr operand{};
-    std::vector<Ptr> arguments{};
-  };
 
   using Data =
       std::variant<std::monostate, Block, Chunk, LocalDeclaration, Assignment,
                    BinaryOperator, UnaryOperator, Return, Break, Number, Name,
-                   Subscript, Access, FunctionCall, MethodCall>;
+                   Subscript, Access, FunctionCall>;
 
   nlohmann::json toJson() const;
   Data data{};
