@@ -1,200 +1,283 @@
 #include "parser.hpp"
-#include "ast_node.hpp"
-#include "scanner.hpp"
-#include "token.hpp"
 
 #include <charconv>
 #include <iostream>
 #include <memory_resource>
+#include <string_view>
+#include <vector>
 
-AstNode::Ptr Parser::parse(Scanner &scanner,
-                           std::pmr::memory_resource &allocator) {
+#include "ast_node.hpp"
+#include "scanner.hpp"
+#include "token.hpp"
+
+AstNode *Parser::parse(Scanner &scanner, std::pmr::memory_resource &allocator) {
   Parser parser{scanner, allocator};
   return parser.parseBlock();
 }
 
-AstNode::Ptr Parser::parseBlock() {
-  return allocate<AstNode>(AstNode::Block{parseChunk()});
-}
+AstNode *Parser::parseBlock() { return makeNode(AstNode::Block{parseChunk()}); }
 
-AstNode::Ptr Parser::parseChunk() {
-  std::vector<AstNode::Ptr> statements{};
-  AstNode::Ptr lastStatement{};
+AstNode *Parser::parseChunk() {
+  AstNode::List<> statements{makeList()};
+  AstNode *lastStatement{};
 
   while (!eof() && !check(Token::Type::Return, Token::Type::Break)) {
     try {
-      statements.emplace_back(parseStat());
+      statements.push_back(parseStat());
       match(Token::Type::Semicolon);
     } catch (const ParseError &error) {
       std::cerr << error.what() << std::endl;
-      return allocate<AstNode>(AstNode::Chunk{statements});
+      return makeNode(AstNode::Chunk{statements});
     }
   }
 
-  AstNode::Ptr lastStat{parseLastStat()};
+  AstNode *lastStat{parseLastStat()};
   match(Token::Type::Semicolon);
-  return allocate<AstNode>(AstNode::Chunk{statements, lastStat});
+  return makeNode(AstNode::Chunk{statements, lastStat});
 }
 
-AstNode::Ptr Parser::parseStat() {
-  if (match(Token::Type::Local)) {
-    std::vector<std::string_view> nameList{parseNameList()};
-    std::vector<AstNode::Ptr> expList{};
+AstNode *Parser::parseStat() {
+  Token token{m_scanner.get().advance()};
+  switch (token.type) {
+    case Token::Type::Local: {
+      AstNode::List<std::string_view> nameList{parseNameList()};
+      AstNode::List<> expList{};
 
-    if (check(Token::Type::Assign)) {
-      m_scanner.get().advance();
-      expList = parseExpList();
+      if (match(Token::Type::Assign)) {
+        expList = parseExpList();
+      }
+
+      return makeNode(AstNode::LocalDeclaration{nameList, expList});
     }
+    default: {
+      AstNode *prefix{parsePrefixExpression(token)};
 
-    return allocate<AstNode>(AstNode::LocalDeclaration{nameList, expList});
+      if (match(Token::Type::Assign)) {
+        prefix = makeNode(AstNode::Assignment{{prefix}, {parseExp()}});
+      } else if (match(Token::Type::Comma)) {
+        AstNode::List<> vars{parseVarList(prefix)};
+        consume(Token::Type::Assign);
+        prefix = makeNode(AstNode::Assignment{vars, parseExpList()});
+      }
+
+      return prefix;
+    }
   }
-
-  AstNode::Ptr prefix{parsePrefixExp()};
-  if (match(Token::Type::Comma)) {
-    std::vector<AstNode::Ptr> varList{parseVarList(prefix)};
-    consume(Token::Type::Assign);
-    std::vector<AstNode::Ptr> expList{parseExpList()};
-    prefix = allocate<AstNode>(AstNode::Assignment{varList, expList});
-  } else if (match(Token::Type::Assign)) {
-    std::vector<AstNode::Ptr> vars{};
-    vars.push_back(prefix);
-    std::vector<AstNode::Ptr> values{};
-    values.push_back(parseExp());
-    prefix = allocate<AstNode>(AstNode::Assignment{vars, values});
-  }
-
-  return prefix;
 }
 
-AstNode::Ptr Parser::parseLastStat() {
+AstNode *Parser::parseLastStat() {
   if (match(Token::Type::Return)) {
-    return allocate<AstNode>(AstNode::Return{parseExpList()});
+    return makeNode(AstNode::Return{parseExpList()});
   }
   consume(Token::Type::Break);
-  m_scanner.get().advance();
-  return allocate<AstNode>(AstNode::Break{});
+  return makeNode(AstNode::Break{});
 }
 
-std::vector<AstNode::Ptr>
-Parser::parseVarList(std::optional<AstNode::Ptr> initial) {
-  return parseList<&Parser::parsePrefixExp>(initial);
-}
+int Parser::getPrecedence(Token::Type type) {
+  switch (type) {
+    case Token::Type::Or:
+      return 1;
 
-std::vector<std::string_view> Parser::parseNameList() {
-  return parseList<&Parser::parseName>();
-}
+    case Token::Type::And:
+      return 2;
 
-std::vector<AstNode::Ptr>
-Parser::parseExpList(std::optional<AstNode::Ptr> initial) {
-  return parseList<&Parser::parseExp>(initial);
-}
+    case Token::Type::LessThan:
+    case Token::Type::GreaterThan:
+    case Token::Type::LessThanOrEqual:
+    case Token::Type::GreaterThanOrEqual:
+    case Token::Type::NotEqual:
+    case Token::Type::Equal:
+      return 3;
 
-AstNode::Ptr Parser::parseExp() { return parseOr(); }
+    case Token::Type::Concatenate:
+      return 4;
 
-AstNode::Ptr Parser::parseOr() {
-  return parseLeftBinaryOperation<&Parser::parseAnd>(Token::Type::Or);
-}
+    case Token::Type::Plus:
+    case Token::Type::Minus:
+      return 5;
 
-AstNode::Ptr Parser::parseAnd() {
-  return parseLeftBinaryOperation<&Parser::parseComparison>(Token::Type::And);
-}
+    case Token::Type::Times:
+    case Token::Type::Divide:
+    case Token::Type::Modulo:
+      return 6;
 
-AstNode::Ptr Parser::parseComparison() {
-  return parseLeftBinaryOperation<&Parser::parseConcatenation>(
-      Token::Type::LessThan, Token::Type::LessThanOrEqual,
-      Token::Type::GreaterThan, Token::Type::GreaterThanOrEqual,
-      Token::Type::NotEqual, Token::Type::Equal);
-}
+    case Token::Type::Not:
+    case Token::Type::Length:
+      return 7;
 
-AstNode::Ptr Parser::parseConcatenation() {
-  return parseRightBinaryOperation<&Parser::parseAdditive>(
-      Token::Type::Concatenate);
-}
+    case Token::Type::Power:
+      return 8;
 
-AstNode::Ptr Parser::parseAdditive() {
-  return parseLeftBinaryOperation<&Parser::parseMultiplicative>(
-      Token::Type::Plus, Token::Type::Minus);
-}
-
-AstNode::Ptr Parser::parseMultiplicative() {
-  return parseLeftBinaryOperation<&Parser::parseUnary>(
-      Token::Type::Times, Token::Type::Divide, Token::Type::Modulo);
-}
-
-AstNode::Ptr Parser::parseUnary() {
-  if (check(Token::Type::Not, Token::Type::Length, Token::Type::Minus)) {
-    Token token{m_scanner.get().advance()};
-    return allocate<AstNode>(AstNode::UnaryOperator{token, parseUnary()});
+    default:
+      return 0;
   }
-  return parsePower();
 }
 
-AstNode::Ptr Parser::parsePower() {
-  return parseRightBinaryOperation<&Parser::parsePrimary>(Token::Type::Power);
-}
+AstNode *Parser::parseExp(int precedence) {
+  Token token{m_scanner.get().advance()};
+  AstNode *left{parseNud(token)};
 
-AstNode::Ptr Parser::parsePrimary() {
-  if (check(Token::Type::Number)) {
-    Token token{m_scanner.get().advance()};
-    double number{};
-    auto [ptr, ec] = std::from_chars(
-        token.data.data(), token.data.data() + token.data.size(), number);
-    if (ptr != token.data.end() || ec != std::errc{}) {
-      throw MalformedNumber{token};
-    }
-    return allocate<AstNode>(AstNode::Number{number});
-  } else {
-    return parsePrefixExp();
+  while (getPrecedence(m_scanner.get().peek().type) > precedence) {
+    left = parseLed(m_scanner.get().advance(), left);
   }
-  throw UnexpectedToken{m_scanner.get().peek(), Token::Type::LeftParenthesis,
-                        Token::Type::Name};
-  return nullptr;
+
+  return left;
 }
 
-AstNode::Ptr Parser::parsePrefixExp() {
-  AstNode::Ptr prefix{};
-  if (match(Token::Type::LeftParenthesis)) {
-    prefix = parseExp();
-    consume(Token::Type::RightParenthesis);
-  } else if (check(Token::Type::Name)) {
-    Token token{m_scanner.get().advance()};
-    prefix = allocate<AstNode>(AstNode::Name{token.data});
-  } else {
-    throw UnexpectedToken{m_scanner.get().peek(), Token::Type::LeftParenthesis,
-                          Token::Type::Name};
+AstNode *Parser::parseNud(Token token) {
+  switch (token.type) {
+    case Token::Type::Number:
+      return parseNumber(token);
+    case Token::Type::Minus:
+    case Token::Type::Not:
+    case Token::Type::Length:
+      return makeNode(AstNode::UnaryOperator{
+          token.type, parseExp(getPrecedence(token.type))});
+    default:
+      return parsePrefixExpression(token);
+  }
+}
+
+AstNode *Parser::parsePrefixExpression(Token token) {
+  AstNode *left{};
+  switch (token.type) {
+    case Token::Type::Name:
+      left = makeNode(AstNode::Name{token.data});
+      break;
+    case Token::Type::LeftParenthesis:
+      left = parseExp(getPrecedence(token.type));
+      consume(Token::Type::RightParenthesis);
+      break;
+    default:
+      throw UnexpectedToken{token, Token::Type::Name,
+                            Token::Type::LeftParenthesis};
   }
 
   while (true) {
-    if (match(Token::Type::LeftBracket)) {
-      prefix = allocate<AstNode>(AstNode::Subscript{prefix, parseExp()});
-      consume(Token::Type::RightBracket);
-    } else if (match(Token::Type::Dot)) {
-      Token token{consume(Token::Type::Name)};
-      prefix = allocate<AstNode>(AstNode::Access{prefix, token.data});
-    } else if (match(Token::Type::LeftParenthesis)) {
-      prefix =
-          allocate<AstNode>(AstNode::FunctionCall{prefix, parseArguments()});
-    } else if (match(Token::Type::Colon)) {
-      Token token{consume(Token::Type::Name)};
-      prefix = allocate<AstNode>(AstNode::Access{prefix, token.data});
-      consume(Token::Type::LeftParenthesis);
-      prefix =
-          allocate<AstNode>(AstNode::FunctionCall{prefix, parseArguments()});
-    } else {
-      break;
+    Token token{m_scanner.get().peek()};
+    switch (token.type) {
+      case Token::Type::LeftBracket: {
+        m_scanner.get().advance();
+        left = makeNode(
+            AstNode::Subscript{left, parseExp(getPrecedence(token.type))});
+        consume(Token::Type::RightBracket);
+        break;
+      }
+      case Token::Type::Dot: {
+        m_scanner.get().advance();
+        left = makeNode(AstNode::Access{left, consume(Token::Type::Name).data});
+        break;
+      }
+      case Token::Type::LeftParenthesis: {
+        m_scanner.get().advance();
+        left = makeNode(AstNode::FunctionCall{left, parseArguments()});
+        break;
+      }
+      case Token::Type::Colon: {
+        m_scanner.get().advance();
+        AstNode *operand = left;
+        left = makeNode(AstNode::Access{left, consume(Token::Type::Name).data});
+        consume(Token::Type::LeftParenthesis);
+        left =
+            makeNode(AstNode::FunctionCall{operand, parseArguments(operand)});
+        break;
+      }
+      default:
+        return left;
     }
   }
 
-  return prefix;
+  return left;
 }
 
-std::vector<AstNode::Ptr> Parser::parseArguments() {
-  std::vector<AstNode::Ptr> arguments{};
+AstNode *Parser::parseNumber(Token token) {
+  double number{};
+  auto [ptr, ec] = std::from_chars(
+      token.data.data(), token.data.data() + token.data.size(), number);
+  if (ptr != token.data.end() || ec != std::errc{}) {
+    throw MalformedNumber{token};
+  }
+  return makeNode(AstNode::Number{number});
+}
 
-  if (!match(Token::Type::RightParenthesis)) {
-    arguments = parseExpList();
-    consume(Token::Type::RightParenthesis);
+AstNode *Parser::parseLed(Token token, AstNode *left) {
+  switch (token.type) {
+    case Token::Type::Or:
+    case Token::Type::And:
+    case Token::Type::LessThan:
+    case Token::Type::GreaterThan:
+    case Token::Type::LessThanOrEqual:
+    case Token::Type::GreaterThanOrEqual:
+    case Token::Type::NotEqual:
+    case Token::Type::Equal:
+    case Token::Type::Concatenate:
+    case Token::Type::Plus:
+    case Token::Type::Minus:
+    case Token::Type::Times:
+    case Token::Type::Divide:
+    case Token::Type::Modulo:
+    case Token::Type::Power:
+      return makeNode(AstNode::BinaryOperator{
+          token.type, {left, parseExp(getPrecedence(token.type))}});
+    default:
+      throw UnexpectedToken{token, Token::Type::Number};
+  }
+}
+
+AstNode::List<std::string_view> Parser::parseNameList() {
+  AstNode::List<std::string_view> list{};
+  list.push_back(consume(Token::Type::Name).data);
+  while (match(Token::Type::Comma)) {
+    list.push_back(consume(Token::Type::Name).data);
+  }
+  return list;
+}
+
+AstNode::List<> Parser::parseArguments(AstNode *first) {
+  if (match(Token::Type::RightParenthesis)) {
+    if (first) {
+      return {first};
+    }
+    return {};
   }
 
+  AstNode::List<> arguments{parseExpList(first)};
+  consume(Token::Type::RightParenthesis);
   return arguments;
+}
+
+AstNode::List<> Parser::parseExpList(AstNode *first) {
+  AstNode::List<> list{makeList()};
+  if (first) {
+    list.push_back(first);
+  }
+
+  list.push_back(parseExp());
+  while (match(Token::Type::Comma)) {
+    list.push_back(parseExp());
+  }
+  return list;
+}
+
+AstNode::List<> Parser::parseVarList(AstNode *first) {
+  AstNode::List<> list{makeList()};
+  if (first) {
+    list.push_back(first);
+  }
+
+  list.push_back(parsePrefixExpression(m_scanner.get().advance()));
+  while (match(Token::Type::Comma)) {
+    list.push_back(parsePrefixExpression(m_scanner.get().advance()));
+  }
+
+  return list;
+}
+
+AstNode *Parser::makeNode(AstNode::Data &&data) {
+  void *buffer = m_allocator.get().allocate(sizeof(AstNode), alignof(AstNode));
+  if (!buffer) {
+    return nullptr;
+  }
+
+  return new (buffer) AstNode(std::move(data));
 }

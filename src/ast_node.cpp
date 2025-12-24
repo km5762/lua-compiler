@@ -1,8 +1,10 @@
 #include "ast_node.hpp"
+
 #include "nlohmann/json_fwd.hpp"
+#include "token.hpp"
 
 namespace {
-nlohmann::json toJson(const std::vector<AstNode::Ptr> &nodes) {
+nlohmann::json toJson(const AstNode::List<> &nodes) {
   std::vector<nlohmann::json> json(nodes.size());
   for (auto i{0uz}; i < nodes.size(); ++i) {
     json[i] = nodes[i]->toJson();
@@ -10,7 +12,7 @@ nlohmann::json toJson(const std::vector<AstNode::Ptr> &nodes) {
   return json;
 }
 
-nlohmann::json toJson(const std::vector<std::string_view> &strings) {
+nlohmann::json toJson(const AstNode::List<std::string_view> &strings) {
   std::vector<nlohmann::json> json(strings.size());
   for (auto i{0uz}; i < strings.size(); ++i) {
     json[i] = std::string{strings[i]};
@@ -18,7 +20,7 @@ nlohmann::json toJson(const std::vector<std::string_view> &strings) {
   return json;
 }
 
-nlohmann::json toJson(const std::pair<AstNode::Ptr, AstNode::Ptr> &nodes) {
+nlohmann::json toJson(const std::pair<AstNode *, AstNode *> &nodes) {
   std::vector<nlohmann::json> json{nodes.first->toJson(),
                                    nodes.second->toJson()};
   return json;
@@ -47,11 +49,11 @@ struct Visitor {
                           {"values", toJson(node.values)}};
   }
   void operator()(const AstNode::BinaryOperator &node) {
-    json["BinaryOperator"] = {{"operator", node.op.data},
+    json["BinaryOperator"] = {{"operator", Token::toString(node.op)},
                               {"operands", toJson(node.operands)}};
   }
   void operator()(const AstNode::UnaryOperator &node) {
-    json["UnaryOperator"] = {{"operator", node.op.data},
+    json["UnaryOperator"] = {{"operator", Token::toString(node.op)},
                              {"operand", node.operand->toJson()}};
   }
   void operator()(const AstNode::Return &node) {
@@ -75,7 +77,7 @@ struct Visitor {
                             {"operand", node.operand->toJson()}};
   }
 };
-} // namespace
+}  // namespace
 
 nlohmann::json AstNode::toJson() const {
   if (std::holds_alternative<std::monostate>(data)) {

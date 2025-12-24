@@ -1,40 +1,41 @@
 #pragma once
 
-#include "token.hpp"
-
 #include <nlohmann/json.hpp>
-
 #include <variant>
 #include <vector>
 
+#include "token.hpp"
+
 struct AstNode {
-public:
-  using Ptr = AstNode *;
+ public:
+  template <typename T = AstNode *>
+  using List = std::pmr::vector<T>;
+
   struct Block {
-    Ptr chunk{};
+    AstNode *chunk{};
   };
   struct Chunk {
-    std::vector<Ptr> statements{};
-    Ptr lastStatement{};
+    List<> statements{};
+    AstNode *lastStatement{};
   };
   struct LocalDeclaration {
-    std::vector<std::string_view> names{};
-    std::vector<Ptr> values{};
+    List<std::string_view> names{};
+    List<> values{};
   };
   struct Assignment {
-    std::vector<Ptr> vars{};
-    std::vector<Ptr> values{};
+    List<> vars{};
+    List<> values{};
   };
   struct BinaryOperator {
-    Token op{};
-    std::pair<Ptr, Ptr> operands{};
+    Token::Type op{};
+    std::pair<AstNode *, AstNode *> operands{};
   };
   struct UnaryOperator {
-    Token op{};
-    Ptr operand{};
+    Token::Type op{};
+    AstNode *operand{};
   };
   struct Return {
-    std::vector<Ptr> values;
+    List<> values;
   };
   struct Break {};
   struct Number {
@@ -44,16 +45,16 @@ public:
     std::string_view name{};
   };
   struct Subscript {
-    Ptr operand{};
-    Ptr index{};
+    AstNode *operand{};
+    AstNode *index{};
   };
   struct Access {
-    Ptr operand{};
+    AstNode *operand{};
     std::string_view member{};
   };
   struct FunctionCall {
-    Ptr operand{};
-    std::vector<Ptr> arguments{};
+    AstNode *operand{};
+    List<> arguments{};
   };
 
   using Data =
@@ -64,6 +65,6 @@ public:
   nlohmann::json toJson() const;
   Data data{};
 
-private:
+ private:
   void buildJson(nlohmann::json &json) const;
 };

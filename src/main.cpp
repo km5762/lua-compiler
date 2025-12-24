@@ -1,10 +1,10 @@
-#include "parser.hpp"
-#include "scanner.hpp"
-
 #include <iostream>
 #include <memory_resource>
 
-int main(int argc, char *argv[]) {
+#include "parser.hpp"
+#include "scanner.hpp"
+
+int main(int argc, char* argv[]) {
   std::string_view program = R"(
 local a, b, c = 1, 2 + 3 * 4, -(5 ^ 2);
 local x, y;
@@ -24,7 +24,7 @@ obj:getInner().compute(a ^ b, -c)
 
   Scanner scanner{program};
   std::pmr::monotonic_buffer_resource allocator{1024};
-  AstNode::Ptr ast{Parser::parse(scanner, allocator)};
+  AstNode* ast{Parser::parse(scanner, allocator)};
 
   if (ast) {
     std::cout << ast->toJson().dump() << std::endl;
