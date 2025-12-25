@@ -8,15 +8,20 @@ include(FetchContent)
 
 FetchContent_Declare(
   nlohmann_json
-  GIT_REPOSITORY "https://github.com/nlohmann/json.git"
-  GIT_TAG "v3.12.0"
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.12.0
 )
-
 FetchContent_MakeAvailable(nlohmann_json)
 
-include_directories(include)
-file(GLOB SOURCES "src/*.cpp")
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-add_executable(lua_compiler ${SOURCES})
-target_link_libraries(lua_compiler nlohmann_json)
+add_subdirectory(src)
+
+enable_testing()
+add_subdirectory(tests)
+
+add_custom_target(build_and_test
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+)
 

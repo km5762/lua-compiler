@@ -34,6 +34,14 @@ Token Scanner::advance() {
       return makeToken(Token::Type::Not);
     } else if (word == "break") {
       return makeToken(Token::Type::Break);
+    } else if (word == "end") {
+      return makeToken(Token::Type::End);
+    } else if (word == "elseif") {
+      return makeToken(Token::Type::ElseIf);
+    } else if (word == "else") {
+      return makeToken(Token::Type::Else);
+    } else if (word == "until") {
+      return makeToken(Token::Type::Until);
     } else {
       return makeToken(Token::Type::Name, word);
     }

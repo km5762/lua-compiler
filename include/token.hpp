@@ -11,6 +11,10 @@ public:
     Local,
     Return,
     Break,
+    End,
+    ElseIf,
+    Else,
+    Until,
     Number,
     String,
     False,
@@ -48,75 +52,89 @@ public:
 
   static std::string_view toString(Token::Type type) {
     switch (type) {
-    case Type::Invalid:
+    case Token::Type::Invalid:
       return "Invalid";
-    case Type::Name:
+    case Token::Type::Name:
       return "Name";
-    case Type::Local:
+    case Token::Type::Local:
       return "Local";
-    case Type::Return:
+    case Token::Type::Return:
       return "Return";
-    case Type::Break:
+    case Token::Type::Break:
       return "Break";
-    case Type::Number:
+    case Token::Type::End:
+      return "End";
+    case Token::Type::ElseIf:
+      return "ElseIf";
+    case Token::Type::Else:
+      return "Else";
+    case Token::Type::Until:
+      return "Until";
+    case Token::Type::Number:
       return "Number";
-    case Type::Assign:
+    case Token::Type::String:
+      return "String";
+    case Token::Type::False:
+      return "False";
+    case Token::Type::True:
+      return "True";
+    case Token::Type::Assign:
       return "Assign";
-    case Type::Or:
+    case Token::Type::Or:
       return "Or";
-    case Type::And:
+    case Token::Type::And:
       return "And";
-    case Type::LessThan:
+    case Token::Type::LessThan:
       return "LessThan";
-    case Type::GreaterThan:
+    case Token::Type::GreaterThan:
       return "GreaterThan";
-    case Type::LessThanOrEqual:
+    case Token::Type::LessThanOrEqual:
       return "LessThanOrEqual";
-    case Type::GreaterThanOrEqual:
-      return "GreaterThanOrEqaul";
-    case Type::NotEqual:
+    case Token::Type::GreaterThanOrEqual:
+      return "GreaterThanOrEqual";
+    case Token::Type::NotEqual:
       return "NotEqual";
-    case Type::Equal:
+    case Token::Type::Equal:
       return "Equal";
-    case Type::Concatenate:
+    case Token::Type::Concatenate:
       return "Concatenate";
-    case Type::Plus:
+    case Token::Type::Plus:
       return "Plus";
-    case Type::Minus:
+    case Token::Type::Minus:
       return "Minus";
-    case Type::Times:
+    case Token::Type::Times:
       return "Times";
-    case Type::Divide:
+    case Token::Type::Divide:
       return "Divide";
-    case Type::Modulo:
+    case Token::Type::Modulo:
       return "Modulo";
-    case Type::Not:
+    case Token::Type::Not:
       return "Not";
-    case Type::Length:
+    case Token::Type::Length:
       return "Length";
-    case Type::Power:
+    case Token::Type::Power:
       return "Power";
-    case Type::Dot:
+    case Token::Type::Dot:
       return "Dot";
-    case Type::LeftParenthesis:
+    case Token::Type::LeftParenthesis:
       return "LeftParenthesis";
-    case Type::RightParenthesis:
+    case Token::Type::RightParenthesis:
       return "RightParenthesis";
-    case Type::LeftBrace:
+    case Token::Type::LeftBrace:
       return "LeftBrace";
-    case Type::RightBrace:
+    case Token::Type::RightBrace:
       return "RightBrace";
-    case Type::LeftBracket:
+    case Token::Type::LeftBracket:
       return "LeftBracket";
-    case Type::RightBracket:
+    case Token::Type::RightBracket:
       return "RightBracket";
-    case Type::Comma:
+    case Token::Type::Comma:
       return "Comma";
-    case Type::Colon:
+    case Token::Type::Colon:
       return "Colon";
-    case Type::Semicolon:
+    case Token::Type::Semicolon:
       return "Semicolon";
-    case Type::Eof:
+    case Token::Type::Eof:
       return "Eof";
     }
   }

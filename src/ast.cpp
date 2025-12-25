@@ -1,94 +1,89 @@
-#include "ast_node.hpp"
+#include "ast.hpp"
 
-#include "nlohmann/json_fwd.hpp"
 #include "token.hpp"
 
+namespace ast {
 namespace {
-nlohmann::json toJson(const AstNode::List<> &nodes) {
-  std::vector<nlohmann::json> json(nodes.size());
+Json toJson(const List<> &nodes) {
+  std::vector<Json> json(nodes.size());
   for (auto i{0uz}; i < nodes.size(); ++i) {
     json[i] = nodes[i]->toJson();
   }
   return json;
 }
 
-nlohmann::json toJson(const AstNode::List<std::string_view> &strings) {
-  std::vector<nlohmann::json> json(strings.size());
+Json toJson(const List<std::string_view> &strings) {
+  std::vector<Json> json(strings.size());
   for (auto i{0uz}; i < strings.size(); ++i) {
     json[i] = std::string{strings[i]};
   }
   return json;
 }
 
-nlohmann::json toJson(const std::pair<AstNode *, AstNode *> &nodes) {
-  std::vector<nlohmann::json> json{nodes.first->toJson(),
-                                   nodes.second->toJson()};
+Json toJson(const std::pair<Node *, Node *> &nodes) {
+  std::vector<Json> json{nodes.first->toJson(), nodes.second->toJson()};
   return json;
 }
 
 struct Visitor {
-  nlohmann::json &json;
+  Json &json;
   void operator()(const std::monostate &node) {}
-  void operator()(const AstNode::Block &node) {
-    json["Block"] = node.chunk->toJson();
-  }
-  void operator()(const AstNode::Chunk &node) {
-    nlohmann::json chunk{};
+  void operator()(const Block &node) { json["Block"] = node.chunk->toJson(); }
+  void operator()(const Chunk &node) {
+    Json chunk{};
     chunk["statements"] = toJson(node.statements);
     if (node.lastStatement) {
       chunk["lastStatement"] = node.lastStatement->toJson();
     }
     json["Chunk"] = chunk;
   }
-  void operator()(const AstNode::LocalDeclaration &node) {
+  void operator()(const LocalDeclaration &node) {
     json["LocalDeclaration"] = {{"names", toJson(node.names)},
                                 {"values", toJson(node.values)}};
   }
-  void operator()(const AstNode::Assignment &node) {
+  void operator()(const Assignment &node) {
     json["Assignment"] = {{"vars", toJson(node.vars)},
                           {"values", toJson(node.values)}};
   }
-  void operator()(const AstNode::BinaryOperator &node) {
+  void operator()(const BinaryOperator &node) {
     json["BinaryOperator"] = {{"operator", Token::toString(node.op)},
                               {"operands", toJson(node.operands)}};
   }
-  void operator()(const AstNode::UnaryOperator &node) {
+  void operator()(const UnaryOperator &node) {
     json["UnaryOperator"] = {{"operator", Token::toString(node.op)},
                              {"operand", node.operand->toJson()}};
   }
-  void operator()(const AstNode::Return &node) {
+  void operator()(const Return &node) {
     json["Return"] = {{"values", toJson(node.values)}};
   }
-  void operator()(const AstNode::Break &node) { json["Break"] = {}; }
-  void operator()(const AstNode::Number &node) { json["Number"] = node.value; }
-  void operator()(const AstNode::Name &node) {
-    json["Name"] = std::string{node.name};
-  }
-  void operator()(const AstNode::Subscript &node) {
+  void operator()(const Break &node) { json["Break"] = {}; }
+  void operator()(const Number &node) { json["Number"] = node.value; }
+  void operator()(const Name &node) { json["Name"] = std::string{node.name}; }
+  void operator()(const Subscript &node) {
     json["Subscript"] = {{"index", node.index->toJson()},
                          {"operand", node.operand->toJson()}};
   }
-  void operator()(const AstNode::Access &node) {
+  void operator()(const Access &node) {
     json["Access"] = {{"member", node.member},
                       {"operand", node.operand->toJson()}};
   }
-  void operator()(const AstNode::FunctionCall &node) {
+  void operator()(const FunctionCall &node) {
     json["FunctionCall"] = {{"arguments", toJson(node.arguments)},
                             {"operand", node.operand->toJson()}};
   }
 };
-}  // namespace
+} // namespace
 
-nlohmann::json AstNode::toJson() const {
+Json Node::toJson() const {
   if (std::holds_alternative<std::monostate>(data)) {
     return nullptr;
   }
 
-  nlohmann::json json{};
+  Json json{};
   buildJson(json);
   return json;
 }
 
-void AstNode::buildJson(nlohmann::json &json) const {
-  std::visit(Visitor{json}, data);
-}
+void Node::buildJson(Json &json) const { std::visit(Visitor{json}, data); }
+
+} // namespace ast

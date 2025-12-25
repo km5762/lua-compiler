@@ -1,0 +1,49 @@
+{
+  "Block": {
+    "Chunk": {
+      "statements": [
+        {
+          "LocalDeclaration": {
+            "names": [
+              "a"
+            ],
+            "values": []
+          }
+        },
+        {
+          "LocalDeclaration": {
+            "names": [
+              "x"
+            ],
+            "values": [
+              {
+                "Number": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "LocalDeclaration": {
+            "names": [
+              "y",
+              "z"
+            ],
+            "values": [
+              {
+                "Number": 2.0
+              },
+              {
+                "Number": 3.0
+              }
+            ]
+          }
+        }
+      ],
+      "lastStatement": {
+        "Return": {
+          "values": []
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "Block": {
+    "Chunk": {
+      "statements": [
+        {
+          "Assignment": {
+            "vars": [
+              {
+                "Name": "x"
+              }
+            ],
+            "values": [
+              {
+                "Number": 6.0
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "vars": [
+              {
+                "Name": "y"
+              }
+            ],
+            "values": [
+              {
+                "Number": 7.0
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "vars": [
+              {
+                "Name": "x"
+              }
+            ],
+            "values": [
+              {
+                "Name": "y"
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "vars": [
+              {
+                "Name": "y"
+              }
+            ],
+            "values": [
+              {
+                "Name": "x"
+              }
+            ]
+          }
+        }
+      ],
+      "lastStatement": {
+        "Return": {
+          "values": []
+        }
+      }
+    }
+  }
+}
