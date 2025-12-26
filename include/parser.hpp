@@ -9,10 +9,16 @@
 
 class ParseError : public std::runtime_error {
 public:
+  ast::Node *ast{};
+
   ParseError(Token token, std::string_view message)
       : std::runtime_error{
             std::format("{}:{}: {}", token.line, token.position, message)} {}
+
+  ParseError(const std::runtime_error &error, ast::Node *ast = nullptr)
+      : std::runtime_error{error}, ast{ast} {}
 };
+
 class UnexpectedToken : public ParseError {
 public:
   template <typename... T>
@@ -31,6 +37,25 @@ private:
                        expectedStr);
   }
 };
+
+template <typename... T> class UnexpectedNode : public ParseError {
+public:
+  explicit UnexpectedNode(ast::Node *got, Token token)
+      : ParseError{token, buildMessage(got, token)} {}
+
+private:
+  static std::string buildMessage(ast::Node *got, Token token) {
+    std::string expectedStr;
+    ((expectedStr += std::string(ast::NodeName<T>::value) + ", "), ...);
+
+    if (!expectedStr.empty())
+      expectedStr.resize(expectedStr.size() - 2);
+
+    return std::format("Unexpected node '{}'. Expected one of: {}", got->name(),
+                       expectedStr);
+  }
+};
+
 class MalformedNumber : public ParseError {
 public:
   explicit MalformedNumber(Token token)
@@ -84,55 +109,28 @@ private:
 
     return m_scanner.get().advance();
   }
-  template <typename... T> Token expect(T... types) {
-    Token token{m_scanner.get().peek()};
-
-    if (!matches(token.type, types...)) {
-      std::string expected =
-          ((std::string{Token::toString(types)} + ", ") + ...);
-      if (!expected.empty())
-        expected = expected.substr(0, expected.size() - 2);
-
-      throw UnexpectedToken{token, types...};
+  template <typename... T> void expect(ast::Node *node, Token token) {
+    if (!node->is<T...>()) {
+      throw UnexpectedNode<T...>(node, token);
     }
-
-    return token;
   }
+
   bool eof() { return check(Token::Type::Eof); }
 
   ast::Node *parseBlock();
   ast::Node *parseChunk();
-  ast::Node *parseStat();
-  ast::Node *parseLastStat();
+  ast::Node *parseStatement();
+  ast::Node *parseLastStatement();
   ast::List<std::string_view> parseNameList();
-  ast::List<> parseVarList(ast::Node *first = nullptr);
-  ast::List<> parseExpList(ast::Node *first = nullptr);
+  ast::List<> parseVariableList(ast::Node *first = nullptr);
+  ast::List<> parseExpressionList(ast::Node *first = nullptr);
   ast::List<> parseArguments(ast::Node *first = nullptr);
-  ast::Node *parseExp(int precedence = 0);
-  template <auto ParseFunc>
-  auto parseList(
-      std::optional<std::invoke_result_t<decltype(ParseFunc), Parser *>> first =
-          nullptr) {
-    using T = std::invoke_result_t<decltype(ParseFunc), Parser *>;
-
-    std::vector<T> list;
-
-    if (first) {
-      list.emplace_back(std::move(*first));
-    } else {
-      list.emplace_back((this->*ParseFunc)());
-    }
-
-    while (match(Token::Type::Comma)) {
-      list.emplace_back((this->*ParseFunc)());
-    }
-
-    return list;
-  }
+  ast::Node *parseExpression(int precedence = 0);
 
   int getPrecedence(Token::Type type);
   ast::Node *parseNud(Token token);
   ast::Node *parseNumber(Token token);
   ast::Node *parsePrefixExpression(Token token);
+  ast::Node *parseVariable(Token token);
   ast::Node *parseLed(Token token, ast::Node *left);
 };

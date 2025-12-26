@@ -24,15 +24,15 @@ struct LocalDeclaration {
   List<> values{};
 };
 struct Assignment {
-  List<> vars{};
+  List<> variables{};
   List<> values{};
 };
 struct BinaryOperator {
-  Token::Type op{};
+  Token::Type operation{};
   std::pair<Node *, Node *> operands{};
 };
 struct UnaryOperator {
-  Token::Type op{};
+  Token::Type operation{};
   Node *operand{};
 };
 struct Return {
@@ -41,6 +41,9 @@ struct Return {
 struct Break {};
 struct Number {
   double value{};
+};
+struct Boolean {
+  bool value{};
 };
 struct Name {
   std::string_view name{};
@@ -57,16 +60,59 @@ struct FunctionCall {
   Node *operand{};
   List<> arguments{};
 };
+struct MethodCall {
+  Node *operand{};
+  List<> arguments{};
+};
 
-using Data = std::variant<std::monostate, Block, Chunk, LocalDeclaration,
-                          Assignment, BinaryOperator, UnaryOperator, Return,
-                          Break, Number, Name, Subscript, Access, FunctionCall>;
+using Data =
+    std::variant<std::monostate, Block, Chunk, LocalDeclaration, Assignment,
+                 BinaryOperator, UnaryOperator, Return, Break, Number, Boolean,
+                 Name, Subscript, Access, FunctionCall, MethodCall>;
+
+template <typename T> struct NodeName;
+#define DECLARE_NODE_NAME(type)                                                \
+  template <> struct NodeName<type> {                                          \
+    static constexpr std::string_view value = #type;                           \
+  }
+DECLARE_NODE_NAME(Block);
+DECLARE_NODE_NAME(Chunk);
+DECLARE_NODE_NAME(LocalDeclaration);
+DECLARE_NODE_NAME(Assignment);
+DECLARE_NODE_NAME(BinaryOperator);
+DECLARE_NODE_NAME(UnaryOperator);
+DECLARE_NODE_NAME(Return);
+DECLARE_NODE_NAME(Break);
+DECLARE_NODE_NAME(Number);
+DECLARE_NODE_NAME(Boolean);
+DECLARE_NODE_NAME(Name);
+DECLARE_NODE_NAME(Subscript);
+DECLARE_NODE_NAME(Access);
+DECLARE_NODE_NAME(FunctionCall);
+DECLARE_NODE_NAME(MethodCall);
+
+#undef DECLARE_NODE_NAME
 
 struct Node {
 public:
   Data data{};
 
   Json toJson() const;
+  template <typename... T> bool is() const {
+    return (std::holds_alternative<T>(data) || ...);
+  }
+
+  std::string_view name() const {
+    return std::visit(
+        [](auto const &value) -> std::string_view {
+          using T = std::decay_t<decltype(value)>;
+          if constexpr (std::is_same_v<T, std::monostate>)
+            return "Empty";
+          else
+            return NodeName<T>::value;
+        },
+        data);
+  }
 
 private:
   void buildJson(Json &json) const;

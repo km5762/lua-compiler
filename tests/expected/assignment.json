@@ -4,7 +4,7 @@
       "statements": [
         {
           "Assignment": {
-            "vars": [
+            "variables": [
               {
                 "Name": "x"
               }
@@ -18,7 +18,7 @@
         },
         {
           "Assignment": {
-            "vars": [
+            "variables": [
               {
                 "Name": "y"
               }
@@ -32,7 +32,7 @@
         },
         {
           "Assignment": {
-            "vars": [
+            "variables": [
               {
                 "Name": "x"
               }
@@ -46,7 +46,7 @@
         },
         {
           "Assignment": {
-            "vars": [
+            "variables": [
               {
                 "Name": "y"
               }

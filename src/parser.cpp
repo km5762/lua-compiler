@@ -1,9 +1,9 @@
 #include "parser.hpp"
 
 #include <charconv>
-#include <iostream>
 #include <memory_resource>
 #include <string_view>
+#include <variant>
 
 #include "ast.hpp"
 #include "scanner.hpp"
@@ -19,45 +19,47 @@ ast::Node *Parser::parseBlock() { return makeNode(ast::Block{parseChunk()}); }
 
 ast::Node *Parser::parseChunk() {
   ast::List<> statements{makeList()};
-  ast::Node *lastStatement{};
 
   while (!eof() && !check(Token::Type::Return, Token::Type::Break)) {
     try {
-      statements.push_back(parseStat());
+      statements.push_back(parseStatement());
       match(Token::Type::Semicolon);
     } catch (const ParseError &error) {
-      std::cerr << error.what() << std::endl;
-      return makeNode(ast::Chunk{statements});
+      throw ParseError{error, makeNode(ast::Chunk{statements})};
     }
   }
 
-  ast::Node *lastStat{parseLastStat()};
+  ast::Node *lastStatement{parseLastStatement()};
+
   match(Token::Type::Semicolon);
-  return makeNode(ast::Chunk{statements, lastStat});
+  return makeNode(ast::Chunk{statements, lastStatement});
 }
 
-ast::Node *Parser::parseStat() {
+ast::Node *Parser::parseStatement() {
   Token token{m_scanner.get().advance()};
   switch (token.type) {
   case Token::Type::Local: {
     ast::List<std::string_view> nameList{parseNameList()};
-    ast::List<> expList{};
+    ast::List<> expressionList{};
 
     if (match(Token::Type::Assign)) {
-      expList = parseExpList();
+      expressionList = parseExpressionList();
     }
 
-    return makeNode(ast::LocalDeclaration{nameList, expList});
+    return makeNode(ast::LocalDeclaration{nameList, expressionList});
   }
   default: {
     ast::Node *prefix{parsePrefixExpression(token)};
 
     if (match(Token::Type::Assign)) {
-      prefix = makeNode(ast::Assignment{{prefix}, {parseExp()}});
+      expect<ast::Access, ast::Subscript, ast::Name>(prefix, token);
+      prefix = makeNode(ast::Assignment{{prefix}, {parseExpression()}});
     } else if (match(Token::Type::Comma)) {
-      ast::List<> vars{parseVarList(prefix)};
+      expect<ast::Access, ast::Subscript, ast::Name>(prefix, token);
+      ast::List<> variables{parseVariableList(prefix)};
+
       consume(Token::Type::Assign);
-      prefix = makeNode(ast::Assignment{vars, parseExpList()});
+      prefix = makeNode(ast::Assignment{variables, parseExpressionList()});
     }
 
     return prefix;
@@ -65,7 +67,7 @@ ast::Node *Parser::parseStat() {
   }
 }
 
-ast::Node *Parser::parseLastStat() {
+ast::Node *Parser::parseLastStatement() {
   if (match(Token::Type::Return)) {
     Token token{m_scanner.get().peek()};
     switch (token.type) {
@@ -77,7 +79,7 @@ ast::Node *Parser::parseLastStat() {
     case Token::Type::Until:
       return makeNode(ast::Return{});
     default:
-      return makeNode(ast::Return{parseExpList()});
+      return makeNode(ast::Return{parseExpressionList()});
     }
   }
   consume(Token::Type::Break);
@@ -124,7 +126,7 @@ int Parser::getPrecedence(Token::Type type) {
   }
 }
 
-ast::Node *Parser::parseExp(int precedence) {
+ast::Node *Parser::parseExpression(int precedence) {
   Token token{m_scanner.get().advance()};
   ast::Node *left{parseNud(token)};
 
@@ -137,13 +139,17 @@ ast::Node *Parser::parseExp(int precedence) {
 
 ast::Node *Parser::parseNud(Token token) {
   switch (token.type) {
+  case Token::Type::False:
+    return makeNode(ast::Boolean{false});
+  case Token::Type::True:
+    return makeNode(ast::Boolean{true});
   case Token::Type::Number:
     return parseNumber(token);
   case Token::Type::Minus:
   case Token::Type::Not:
   case Token::Type::Length:
-    return makeNode(
-        ast::UnaryOperator{token.type, parseExp(getPrecedence(token.type))});
+    return makeNode(ast::UnaryOperator{
+        token.type, parseExpression(getPrecedence(token.type))});
   default:
     return parsePrefixExpression(token);
   }
@@ -156,7 +162,7 @@ ast::Node *Parser::parsePrefixExpression(Token token) {
     left = makeNode(ast::Name{token.data});
     break;
   case Token::Type::LeftParenthesis:
-    left = parseExp(getPrecedence(token.type));
+    left = parseExpression(getPrecedence(token.type));
     consume(Token::Type::RightParenthesis);
     break;
   default:
@@ -169,8 +175,8 @@ ast::Node *Parser::parsePrefixExpression(Token token) {
     switch (token.type) {
     case Token::Type::LeftBracket: {
       m_scanner.get().advance();
-      left =
-          makeNode(ast::Subscript{left, parseExp(getPrecedence(token.type))});
+      left = makeNode(
+          ast::Subscript{left, parseExpression(getPrecedence(token.type))});
       consume(Token::Type::RightBracket);
       break;
     }
@@ -186,10 +192,9 @@ ast::Node *Parser::parsePrefixExpression(Token token) {
     }
     case Token::Type::Colon: {
       m_scanner.get().advance();
-      ast::Node *operand = left;
       left = makeNode(ast::Access{left, consume(Token::Type::Name).data});
       consume(Token::Type::LeftParenthesis);
-      left = makeNode(ast::FunctionCall{operand, parseArguments(operand)});
+      left = makeNode(ast::MethodCall{left, parseArguments()});
       break;
     }
     default:
@@ -198,6 +203,15 @@ ast::Node *Parser::parsePrefixExpression(Token token) {
   }
 
   return left;
+}
+
+ast::Node *Parser::parseVariable(Token token) {
+  ast::Node *prefix{parsePrefixExpression(token)};
+  if (!prefix->is<ast::Access, ast::Subscript, ast::Name>()) {
+    throw ParseError{token, "Left hand side of assignment must be a member "
+                            "access (a.b), subscript (a[b]) or name (a)."};
+  }
+  return prefix;
 }
 
 ast::Node *Parser::parseNumber(Token token) {
@@ -220,15 +234,17 @@ ast::Node *Parser::parseLed(Token token, ast::Node *left) {
   case Token::Type::GreaterThanOrEqual:
   case Token::Type::NotEqual:
   case Token::Type::Equal:
-  case Token::Type::Concatenate:
   case Token::Type::Plus:
   case Token::Type::Minus:
   case Token::Type::Times:
   case Token::Type::Divide:
   case Token::Type::Modulo:
-  case Token::Type::Power:
     return makeNode(ast::BinaryOperator{
-        token.type, {left, parseExp(getPrecedence(token.type))}});
+        token.type, {left, parseExpression(getPrecedence(token.type))}});
+  case Token::Type::Power:
+  case Token::Type::Concatenate:
+    return makeNode(ast::BinaryOperator{
+        token.type, {left, parseExpression(getPrecedence(token.type) - 1)}});
   default:
     throw UnexpectedToken{token, Token::Type::Number};
   }
@@ -251,33 +267,34 @@ ast::List<> Parser::parseArguments(ast::Node *first) {
     return {};
   }
 
-  ast::List<> arguments{parseExpList(first)};
+  ast::List<> arguments{parseExpressionList(first)};
   consume(Token::Type::RightParenthesis);
   return arguments;
 }
 
-ast::List<> Parser::parseExpList(ast::Node *first) {
+ast::List<> Parser::parseExpressionList(ast::Node *first) {
   ast::List<> list{makeList()};
   if (first) {
     list.push_back(first);
   }
 
-  list.push_back(parseExp());
+  list.push_back(parseExpression());
   while (match(Token::Type::Comma)) {
-    list.push_back(parseExp());
+    list.push_back(parseExpression());
   }
   return list;
 }
 
-ast::List<> Parser::parseVarList(ast::Node *first) {
+ast::List<> Parser::parseVariableList(ast::Node *first) {
+
   ast::List<> list{makeList()};
   if (first) {
     list.push_back(first);
   }
 
-  list.push_back(parsePrefixExpression(m_scanner.get().advance()));
+  list.push_back(parseVariable(m_scanner.get().advance()));
   while (match(Token::Type::Comma)) {
-    list.push_back(parsePrefixExpression(m_scanner.get().advance()));
+    list.push_back(parseVariable(m_scanner.get().advance()));
   }
 
   return list;

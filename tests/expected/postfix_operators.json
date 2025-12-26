@@ -1,0 +1,117 @@
+{
+  "Block": {
+    "Chunk": {
+      "statements": [
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "a"
+              },
+              {
+                "Access": {
+                  "operand": {
+                    "Name": "x"
+                  },
+                  "member": "a"
+                }
+              },
+              {
+                "Subscript": {
+                  "operand": {
+                    "Name": "x"
+                  },
+                  "index": {
+                    "Name": "c"
+                  }
+                }
+              },
+              {
+                "Subscript": {
+                  "operand": {
+                    "FunctionCall": {
+                      "operand": {
+                        "Access": {
+                          "operand": {
+                            "Access": {
+                              "operand": {
+                                "FunctionCall": {
+                                  "operand": {
+                                    "Access": {
+                                      "operand": {
+                                        "Name": "x"
+                                      },
+                                      "member": "b"
+                                    }
+                                  },
+                                  "arguments": []
+                                }
+                              },
+                              "member": "a"
+                            }
+                          },
+                          "member": "b"
+                        }
+                      },
+                      "arguments": []
+                    }
+                  },
+                  "index": {
+                    "Name": "c"
+                  }
+                }
+              }
+            ],
+            "values": [
+              {
+                "Number": 1.0
+              },
+              {
+                "Number": 2.0
+              },
+              {
+                "Number": 3.0
+              },
+              {
+                "Number": 4.0
+              }
+            ]
+          }
+        },
+        {
+          "MethodCall": {
+            "operand": {
+              "Access": {
+                "operand": {
+                  "Access": {
+                    "operand": {
+                      "Name": "a"
+                    },
+                    "member": "b"
+                  }
+                },
+                "member": "c"
+              }
+            },
+            "arguments": [
+              {
+                "Name": "a"
+              },
+              {
+                "Name": "b"
+              },
+              {
+                "Name": "c"
+              }
+            ]
+          }
+        }
+      ],
+      "lastStatement": {
+        "Return": {
+          "values": []
+        }
+      }
+    }
+  }
+}

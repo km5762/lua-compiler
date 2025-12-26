@@ -28,48 +28,69 @@ Json toJson(const std::pair<Node *, Node *> &nodes) {
 struct Visitor {
   Json &json;
   void operator()(const std::monostate &node) {}
-  void operator()(const Block &node) { json["Block"] = node.chunk->toJson(); }
+  void operator()(const Block &node) {
+    json[NodeName<Block>::value] = node.chunk->toJson();
+  }
   void operator()(const Chunk &node) {
     Json chunk{};
     chunk["statements"] = toJson(node.statements);
     if (node.lastStatement) {
       chunk["lastStatement"] = node.lastStatement->toJson();
     }
-    json["Chunk"] = chunk;
+    json[NodeName<ast::Chunk>::value] = chunk;
   }
   void operator()(const LocalDeclaration &node) {
-    json["LocalDeclaration"] = {{"names", toJson(node.names)},
-                                {"values", toJson(node.values)}};
+    json[NodeName<LocalDeclaration>::value] = {{"names", toJson(node.names)},
+                                               {"values", toJson(node.values)}};
   }
   void operator()(const Assignment &node) {
-    json["Assignment"] = {{"vars", toJson(node.vars)},
-                          {"values", toJson(node.values)}};
+    json[NodeName<Assignment>::value] = {{"variables", toJson(node.variables)},
+                                         {"values", toJson(node.values)}};
   }
   void operator()(const BinaryOperator &node) {
-    json["BinaryOperator"] = {{"operator", Token::toString(node.op)},
-                              {"operands", toJson(node.operands)}};
+    json[NodeName<BinaryOperator>::value] = {
+        {"operands", toJson(node.operands)},
+        {"operator", Token::toString(node.operation)},
+    };
   }
   void operator()(const UnaryOperator &node) {
-    json["UnaryOperator"] = {{"operator", Token::toString(node.op)},
-                             {"operand", node.operand->toJson()}};
+    json[NodeName<UnaryOperator>::value] = {
+        {"operator", Token::toString(node.operation)},
+        {"operand", node.operand->toJson()}};
   }
   void operator()(const Return &node) {
-    json["Return"] = {{"values", toJson(node.values)}};
+    json[NodeName<Return>::value] = {{"values", toJson(node.values)}};
   }
-  void operator()(const Break &node) { json["Break"] = {}; }
-  void operator()(const Number &node) { json["Number"] = node.value; }
-  void operator()(const Name &node) { json["Name"] = std::string{node.name}; }
+  void operator()(const Break &node) { json[NodeName<Break>::value] = {}; }
+  void operator()(const Number &node) {
+    json[NodeName<Number>::value] = node.value;
+  }
+  void operator()(const Boolean &node) {
+    json[NodeName<Boolean>::value] = node.value;
+  }
+  void operator()(const Name &node) {
+    json[NodeName<Name>::value] = std::string{node.name};
+  }
   void operator()(const Subscript &node) {
-    json["Subscript"] = {{"index", node.index->toJson()},
-                         {"operand", node.operand->toJson()}};
+    json[NodeName<Subscript>::value] = {
+        {"operand", node.operand->toJson()},
+        {"index", node.index->toJson()},
+    };
   }
   void operator()(const Access &node) {
-    json["Access"] = {{"member", node.member},
-                      {"operand", node.operand->toJson()}};
+    json[NodeName<Access>::value] = {
+        {"operand", node.operand->toJson()},
+        {"member", node.member},
+    };
   }
   void operator()(const FunctionCall &node) {
-    json["FunctionCall"] = {{"arguments", toJson(node.arguments)},
-                            {"operand", node.operand->toJson()}};
+    json[NodeName<FunctionCall>::value] = {
+        {"operand", node.operand->toJson()},
+        {"arguments", toJson(node.arguments)}};
+  }
+  void operator()(const MethodCall &node) {
+    json[NodeName<MethodCall>::value] = {{"operand", node.operand->toJson()},
+                                         {"arguments", toJson(node.arguments)}};
   }
 };
 } // namespace

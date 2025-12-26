@@ -42,6 +42,10 @@ Token Scanner::advance() {
       return makeToken(Token::Type::Else);
     } else if (word == "until") {
       return makeToken(Token::Type::Until);
+    } else if (word == "false") {
+      return makeToken(Token::Type::False);
+    } else if (word == "true") {
+      return makeToken(Token::Type::True);
     } else {
       return makeToken(Token::Type::Name, word);
     }

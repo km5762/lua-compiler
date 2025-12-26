@@ -1,0 +1,498 @@
+{
+  "Block": {
+    "Chunk": {
+      "statements": [
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "a"
+              }
+            ],
+            "values": [
+              {
+                "BinaryOperator": {
+                  "operands": [
+                    {
+                      "Boolean": false
+                    },
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "Boolean": true
+                          },
+                          {
+                            "Boolean": false
+                          }
+                        ],
+                        "operator": "And"
+                      }
+                    }
+                  ],
+                  "operator": "Or"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "b"
+              }
+            ],
+            "values": [
+              {
+                "BinaryOperator": {
+                  "operands": [
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "BinaryOperator": {
+                              "operands": [
+                                {
+                                  "BinaryOperator": {
+                                    "operands": [
+                                      {
+                                        "BinaryOperator": {
+                                          "operands": [
+                                            {
+                                              "BinaryOperator": {
+                                                "operands": [
+                                                  {
+                                                    "Number": 1.0
+                                                  },
+                                                  {
+                                                    "Number": 2.0
+                                                  }
+                                                ],
+                                                "operator": "LessThan"
+                                              }
+                                            },
+                                            {
+                                              "Number": 3.0
+                                            }
+                                          ],
+                                          "operator": "Equal"
+                                        }
+                                      },
+                                      {
+                                        "Number": 4.0
+                                      }
+                                    ],
+                                    "operator": "GreaterThanOrEqual"
+                                  }
+                                },
+                                {
+                                  "Number": 5.0
+                                }
+                              ],
+                              "operator": "NotEqual"
+                            }
+                          },
+                          {
+                            "Number": 6.0
+                          }
+                        ],
+                        "operator": "LessThanOrEqual"
+                      }
+                    },
+                    {
+                      "Number": 7.0
+                    }
+                  ],
+                  "operator": "GreaterThan"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "c"
+              }
+            ],
+            "values": [
+              {
+                "BinaryOperator": {
+                  "operands": [
+                    {
+                      "Number": 1.0
+                    },
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "Number": 2.0
+                          },
+                          {
+                            "Number": 3.0
+                          }
+                        ],
+                        "operator": "Concatenate"
+                      }
+                    }
+                  ],
+                  "operator": "Concatenate"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "d"
+              }
+            ],
+            "values": [
+              {
+                "BinaryOperator": {
+                  "operands": [
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "Number": 1.0
+                          },
+                          {
+                            "Number": 2.0
+                          }
+                        ],
+                        "operator": "Plus"
+                      }
+                    },
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "BinaryOperator": {
+                              "operands": [
+                                {
+                                  "BinaryOperator": {
+                                    "operands": [
+                                      {
+                                        "Number": 3.0
+                                      },
+                                      {
+                                        "Number": 4.0
+                                      }
+                                    ],
+                                    "operator": "Times"
+                                  }
+                                },
+                                {
+                                  "Number": 5.0
+                                }
+                              ],
+                              "operator": "Divide"
+                            }
+                          },
+                          {
+                            "Number": 6.0
+                          }
+                        ],
+                        "operator": "Modulo"
+                      }
+                    }
+                  ],
+                  "operator": "Minus"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "e"
+              }
+            ],
+            "values": [
+              {
+                "UnaryOperator": {
+                  "operator": "Not",
+                  "operand": {
+                    "UnaryOperator": {
+                      "operator": "Length",
+                      "operand": {
+                        "UnaryOperator": {
+                          "operator": "Minus",
+                          "operand": {
+                            "BinaryOperator": {
+                              "operands": [
+                                {
+                                  "Name": "x"
+                                },
+                                {
+                                  "BinaryOperator": {
+                                    "operands": [
+                                      {
+                                        "Name": "y"
+                                      },
+                                      {
+                                        "Name": "z"
+                                      }
+                                    ],
+                                    "operator": "Power"
+                                  }
+                                }
+                              ],
+                              "operator": "Power"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "f"
+              }
+            ],
+            "values": [
+              {
+                "BinaryOperator": {
+                  "operands": [
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "BinaryOperator": {
+                              "operands": [
+                                {
+                                  "UnaryOperator": {
+                                    "operator": "Not",
+                                    "operand": {
+                                      "Name": "x"
+                                    }
+                                  }
+                                },
+                                {
+                                  "Name": "y"
+                                }
+                              ],
+                              "operator": "LessThan"
+                            }
+                          },
+                          {
+                            "Name": "z"
+                          }
+                        ],
+                        "operator": "And"
+                      }
+                    },
+                    {
+                      "Name": "w"
+                    }
+                  ],
+                  "operator": "Or"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "g"
+              }
+            ],
+            "values": [
+              {
+                "UnaryOperator": {
+                  "operator": "Minus",
+                  "operand": {
+                    "BinaryOperator": {
+                      "operands": [
+                        {
+                          "Number": 2.0
+                        },
+                        {
+                          "BinaryOperator": {
+                            "operands": [
+                              {
+                                "Number": 3.0
+                              },
+                              {
+                                "Number": 4.0
+                              }
+                            ],
+                            "operator": "Power"
+                          }
+                        }
+                      ],
+                      "operator": "Power"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "h"
+              }
+            ],
+            "values": [
+              {
+                "BinaryOperator": {
+                  "operands": [
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "Name": "a"
+                          },
+                          {
+                            "Name": "b"
+                          }
+                        ],
+                        "operator": "Plus"
+                      }
+                    },
+                    {
+                      "Name": "c"
+                    }
+                  ],
+                  "operator": "Times"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "result"
+              }
+            ],
+            "values": [
+              {
+                "BinaryOperator": {
+                  "operands": [
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "BinaryOperator": {
+                              "operands": [
+                                {
+                                  "UnaryOperator": {
+                                    "operator": "Not",
+                                    "operand": {
+                                      "Name": "a"
+                                    }
+                                  }
+                                },
+                                {
+                                  "Name": "b"
+                                }
+                              ],
+                              "operator": "LessThan"
+                            }
+                          },
+                          {
+                            "Name": "c"
+                          }
+                        ],
+                        "operator": "And"
+                      }
+                    },
+                    {
+                      "BinaryOperator": {
+                        "operands": [
+                          {
+                            "Name": "d"
+                          },
+                          {
+                            "BinaryOperator": {
+                              "operands": [
+                                {
+                                  "Name": "e"
+                                },
+                                {
+                                  "BinaryOperator": {
+                                    "operands": [
+                                      {
+                                        "Name": "f"
+                                      },
+                                      {
+                                        "UnaryOperator": {
+                                          "operator": "Minus",
+                                          "operand": {
+                                            "BinaryOperator": {
+                                              "operands": [
+                                                {
+                                                  "Name": "g"
+                                                },
+                                                {
+                                                  "BinaryOperator": {
+                                                    "operands": [
+                                                      {
+                                                        "Name": "h"
+                                                      },
+                                                      {
+                                                        "Name": "i"
+                                                      }
+                                                    ],
+                                                    "operator": "Power"
+                                                  }
+                                                }
+                                              ],
+                                              "operator": "Power"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    ],
+                                    "operator": "Times"
+                                  }
+                                }
+                              ],
+                              "operator": "Plus"
+                            }
+                          }
+                        ],
+                        "operator": "Concatenate"
+                      }
+                    }
+                  ],
+                  "operator": "Or"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "lastStatement": {
+        "Return": {
+          "values": [
+            {
+              "Name": "result"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

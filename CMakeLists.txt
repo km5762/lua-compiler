@@ -20,8 +20,3 @@ add_subdirectory(src)
 enable_testing()
 add_subdirectory(tests)
 
-add_custom_target(build_and_test
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
-    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-)
-
