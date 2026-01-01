@@ -181,6 +181,12 @@ private:
       consume(Token::Type::End);
       return makeNode(ast::WhileLoop{condition, block});
     }
+    case Token::Type::Repeat: {
+      ast::Node *block{parseBlock<true>(Token::Type::Until)};
+      consume(Token::Type::Until);
+      ast::Node *condition{parseExpression()};
+      return makeNode(ast::RepeatLoop{condition, block});
+    }
     case Token::Type::Return:
       return parseReturn(delimiters...);
     case Token::Type::Break:
