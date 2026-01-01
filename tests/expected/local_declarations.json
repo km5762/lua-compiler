@@ -1,6 +1,6 @@
 {
-  "Block": {
-    "Chunk": {
+  "Chunk": {
+    "Block": {
       "statements": [
         {
           "LocalDeclaration": {
@@ -37,13 +37,13 @@
               }
             ]
           }
+        },
+        {
+          "Return": {
+            "values": []
+          }
         }
-      ],
-      "lastStatement": {
-        "Return": {
-          "values": []
-        }
-      }
+      ]
     }
   }
 }

@@ -1,6 +1,6 @@
 {
-  "Block": {
-    "Chunk": {
+  "Chunk": {
+    "Block": {
       "statements": [
         {
           "Assignment": {
@@ -105,13 +105,13 @@
               }
             ]
           }
+        },
+        {
+          "Return": {
+            "values": []
+          }
         }
-      ],
-      "lastStatement": {
-        "Return": {
-          "values": []
-        }
-      }
+      ]
     }
   }
 }

@@ -13,11 +13,10 @@ template <typename T = Node *> using List = std::pmr::vector<T>;
 using Json = nlohmann::ordered_json;
 
 struct Block {
-  Node *chunk{};
+  List<> statements{};
 };
 struct Chunk {
-  List<> statements{};
-  Node *lastStatement{};
+  Node *block{};
 };
 struct LocalDeclaration {
   List<std::string_view> names{};
@@ -64,11 +63,24 @@ struct MethodCall {
   Node *operand{};
   List<> arguments{};
 };
+struct WhileLoop {
+  Node *condition{};
+  Node *block{};
+};
+struct RepeatLoop {
+  Node *condition{};
+  Node *block{};
+};
+struct Conditional {
+  Node *condition{};
+  Node *block{};
+};
 
 using Data =
     std::variant<std::monostate, Block, Chunk, LocalDeclaration, Assignment,
                  BinaryOperator, UnaryOperator, Return, Break, Number, Boolean,
-                 Name, Subscript, Access, FunctionCall, MethodCall>;
+                 Name, Subscript, Access, FunctionCall, MethodCall, WhileLoop,
+                 RepeatLoop, Conditional>;
 
 template <typename T> struct NodeName;
 #define DECLARE_NODE_NAME(type)                                                \
@@ -90,6 +102,9 @@ DECLARE_NODE_NAME(Subscript);
 DECLARE_NODE_NAME(Access);
 DECLARE_NODE_NAME(FunctionCall);
 DECLARE_NODE_NAME(MethodCall);
+DECLARE_NODE_NAME(WhileLoop);
+DECLARE_NODE_NAME(RepeatLoop);
+DECLARE_NODE_NAME(Conditional);
 
 #undef DECLARE_NODE_NAME
 

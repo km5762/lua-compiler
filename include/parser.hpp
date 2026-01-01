@@ -6,6 +6,28 @@
 
 #include "ast.hpp"
 #include "scanner.hpp"
+#include "token.hpp"
+
+namespace {
+template <typename... T> std::string buildMessage(T... types) {
+  std::string typesString =
+      ((std::string(Token::toString(types)) + ", ") + ...);
+  if (!typesString.empty())
+    typesString.resize(typesString.size() - 2);
+
+  return typesString;
+}
+
+template <typename... T> std::string buildNodesString() {
+  std::string nodesString;
+  ((nodesString += std::string(ast::NodeName<T>::value) + ", "), ...);
+
+  if (!nodesString.empty())
+    nodesString.resize(nodesString.size() - 2);
+
+  return nodesString;
+}
+} // namespace
 
 class ParseError : public std::runtime_error {
 public:
@@ -23,37 +45,17 @@ class UnexpectedToken : public ParseError {
 public:
   template <typename... T>
   UnexpectedToken(Token got, T... expected)
-      : ParseError{got, buildMessage(got, expected...)} {}
-
-private:
-  template <typename... T>
-  static std::string buildMessage(Token got, T... expected) {
-    std::string expectedStr =
-        ((std::string(Token::toString(expected)) + ", ") + ...);
-    if (!expectedStr.empty())
-      expectedStr.resize(expectedStr.size() - 2);
-
-    return std::format("Unexpected token '{}'. Expected one of: {}", got.data,
-                       expectedStr);
-  }
+      : ParseError{got,
+                   std::format("Unexpected token '{}'. Expected one of: {}",
+                               got.data, buildMessage(expected...))} {}
 };
 
 template <typename... T> class UnexpectedNode : public ParseError {
 public:
   explicit UnexpectedNode(ast::Node *got, Token token)
-      : ParseError{token, buildMessage(got, token)} {}
-
-private:
-  static std::string buildMessage(ast::Node *got, Token token) {
-    std::string expectedStr;
-    ((expectedStr += std::string(ast::NodeName<T>::value) + ", "), ...);
-
-    if (!expectedStr.empty())
-      expectedStr.resize(expectedStr.size() - 2);
-
-    return std::format("Unexpected node '{}'. Expected one of: {}", got->name(),
-                       expectedStr);
-  }
+      : ParseError{token,
+                   std::format("Unexpected node '{}'. Expected one of: {}",
+                               got->name(), buildNodesString<T...>())} {}
 };
 
 class MalformedNumber : public ParseError {
@@ -61,6 +63,22 @@ public:
   explicit MalformedNumber(Token token)
       : ParseError{token,
                    std::format("Unable to parse number: '{}'", token.data)} {}
+};
+
+template <typename... T> class MissingClosingDelimiter : public ParseError {
+public:
+  explicit MissingClosingDelimiter(Token token, T... expected)
+      : ParseError{
+            token,
+            std::format(
+                "Missing closing delimiter for block. Expected one of: {}",
+                buildMessage(expected...))} {}
+};
+
+template <typename... T> class BreakOutsideLoop : public ParseError {
+public:
+  explicit BreakOutsideLoop(Token token)
+      : ParseError{token, "Break statement outside of loop"} {}
 };
 
 class Parser {
@@ -117,10 +135,77 @@ private:
 
   bool eof() { return check(Token::Type::Eof); }
 
-  ast::Node *parseBlock();
+  template <bool inLoop, typename... T> ast::Node *parseBlock(T... delimiters) {
+    ast::List<> statements{makeList()};
+
+    while (true) {
+      if (check(delimiters...)) {
+        return makeNode(ast::Block{statements});
+      }
+      if (check(Token::Type::Eof)) {
+        throw MissingClosingDelimiter{m_scanner.get().peek(), delimiters...};
+      }
+      try {
+        statements.push_back(parseStatement<inLoop>(delimiters...));
+        match(Token::Type::Semicolon);
+      } catch (const ParseError &error) {
+        throw ParseError{error, makeNode(ast::Block{statements})};
+      }
+    }
+  }
   ast::Node *parseChunk();
-  ast::Node *parseStatement();
-  ast::Node *parseLastStatement();
+  template <typename... T> ast::Node *parseReturn(T... delimiters) {
+    if (check(delimiters...) || check(Token::Type::Semicolon)) {
+      return makeNode(ast::Return{});
+    }
+    return makeNode(ast::Return{parseExpressionList()});
+  }
+  template <bool inLoop, typename... T>
+  ast::Node *parseStatement(T... delimiters) {
+    Token token{m_scanner.get().advance()};
+    switch (token.type) {
+    case Token::Type::Local: {
+      ast::List<std::string_view> nameList{parseNameList()};
+      ast::List<> expressionList{};
+
+      if (match(Token::Type::Assign)) {
+        expressionList = parseExpressionList();
+      }
+
+      return makeNode(ast::LocalDeclaration{nameList, expressionList});
+    }
+    case Token::Type::While: {
+      ast::Node *condition{parseExpression()};
+      consume(Token::Type::Do);
+      ast::Node *block{parseBlock<true>(Token::Type::End)};
+      consume(Token::Type::End);
+      return makeNode(ast::WhileLoop{condition, block});
+    }
+    case Token::Type::Return:
+      return parseReturn(delimiters...);
+    case Token::Type::Break:
+      if constexpr (!inLoop) {
+        throw BreakOutsideLoop(token);
+      }
+      return makeNode(ast::Break{});
+    default: {
+      ast::Node *prefix{parsePrefixExpression(token)};
+
+      if (match(Token::Type::Assign)) {
+        expect<ast::Access, ast::Subscript, ast::Name>(prefix, token);
+        prefix = makeNode(ast::Assignment{{prefix}, {parseExpression()}});
+      } else if (match(Token::Type::Comma)) {
+        expect<ast::Access, ast::Subscript, ast::Name>(prefix, token);
+        ast::List<> variables{parseVariableList(prefix)};
+
+        consume(Token::Type::Assign);
+        prefix = makeNode(ast::Assignment{variables, parseExpressionList()});
+      }
+
+      return prefix;
+    }
+    }
+  }
   ast::List<std::string_view> parseNameList();
   ast::List<> parseVariableList(ast::Node *first = nullptr);
   ast::List<> parseExpressionList(ast::Node *first = nullptr);

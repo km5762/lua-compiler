@@ -11,8 +11,13 @@ public:
     Local,
     Return,
     Break,
+    Do,
+    While,
+    Repeat,
+    Then,
     End,
     ElseIf,
+    If,
     Else,
     Until,
     Number,
@@ -62,10 +67,20 @@ public:
       return "Return";
     case Token::Type::Break:
       return "Break";
+    case Token::Type::Do:
+      return "Do";
+    case Token::Type::While:
+      return "While";
+    case Token::Type::Repeat:
+      return "Repeat";
+    case Token::Type::Then:
+      return "Then";
     case Token::Type::End:
       return "End";
     case Token::Type::ElseIf:
       return "ElseIf";
+    case Token::Type::If:
+      return "If";
     case Token::Type::Else:
       return "Else";
     case Token::Type::Until:

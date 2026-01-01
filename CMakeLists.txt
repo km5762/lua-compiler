@@ -13,7 +13,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
+
+if(ENABLE_COVERAGE)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(
+            -O0
+            -g
+            -fprofile-arcs
+            -ftest-coverage
+        )
+    add_link_options(
+            -fprofile-arcs
+            -ftest-coverage
+        )
+  endif()
+endif()
 
 add_subdirectory(src)
 

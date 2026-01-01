@@ -36,10 +36,18 @@ Token Scanner::advance() {
       return makeToken(Token::Type::Break);
     } else if (word == "end") {
       return makeToken(Token::Type::End);
+    } else if (word == "if") {
+      return makeToken(Token::Type::If);
     } else if (word == "elseif") {
       return makeToken(Token::Type::ElseIf);
     } else if (word == "else") {
       return makeToken(Token::Type::Else);
+    } else if (word == "while") {
+      return makeToken(Token::Type::While);
+    } else if (word == "do") {
+      return makeToken(Token::Type::Do);
+    } else if (word == "repeat") {
+      return makeToken(Token::Type::Repeat);
     } else if (word == "until") {
       return makeToken(Token::Type::Until);
     } else if (word == "false") {

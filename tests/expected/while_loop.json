@@ -1,0 +1,72 @@
+{
+  "Chunk": {
+    "Block": {
+      "statements": [
+        {
+          "LocalDeclaration": {
+            "names": [
+              "i"
+            ],
+            "values": [
+              {
+                "Number": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "WhileLoop": {
+            "condition": {
+              "BinaryOperator": {
+                "operands": [
+                  {
+                    "Name": "i"
+                  },
+                  {
+                    "Number": 5.0
+                  }
+                ],
+                "operator": "LessThanOrEqual"
+              }
+            },
+            "block": {
+              "Block": {
+                "statements": [
+                  {
+                    "Assignment": {
+                      "variables": [
+                        {
+                          "Name": "i"
+                        }
+                      ],
+                      "values": [
+                        {
+                          "BinaryOperator": {
+                            "operands": [
+                              {
+                                "Name": "i"
+                              },
+                              {
+                                "Number": 1.0
+                              }
+                            ],
+                            "operator": "Plus"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "Return": {
+            "values": []
+          }
+        }
+      ]
+    }
+  }
+}

@@ -29,15 +29,12 @@ struct Visitor {
   Json &json;
   void operator()(const std::monostate &node) {}
   void operator()(const Block &node) {
-    json[NodeName<Block>::value] = node.chunk->toJson();
+    Json block{};
+    block["statements"] = toJson(node.statements);
+    json[NodeName<ast::Block>::value] = block;
   }
   void operator()(const Chunk &node) {
-    Json chunk{};
-    chunk["statements"] = toJson(node.statements);
-    if (node.lastStatement) {
-      chunk["lastStatement"] = node.lastStatement->toJson();
-    }
-    json[NodeName<ast::Chunk>::value] = chunk;
+    json[NodeName<Chunk>::value] = node.block->toJson();
   }
   void operator()(const LocalDeclaration &node) {
     json[NodeName<LocalDeclaration>::value] = {{"names", toJson(node.names)},
@@ -91,6 +88,20 @@ struct Visitor {
   void operator()(const MethodCall &node) {
     json[NodeName<MethodCall>::value] = {{"operand", node.operand->toJson()},
                                          {"arguments", toJson(node.arguments)}};
+  }
+  void operator()(const WhileLoop &node) {
+    json[NodeName<WhileLoop>::value] = {{"condition", node.condition->toJson()},
+                                        {"block", node.block->toJson()}};
+  }
+  void operator()(const RepeatLoop &node) {
+    json[NodeName<RepeatLoop>::value] = {
+        {"condition", node.condition->toJson()},
+        {"block", node.block->toJson()}};
+  }
+  void operator()(const Conditional &node) {
+    json[NodeName<Conditional>::value] = {
+        {"condition", node.condition->toJson()},
+        {"block", node.block->toJson()}};
   }
 };
 } // namespace
