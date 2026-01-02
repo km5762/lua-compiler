@@ -71,6 +71,17 @@ struct RepeatLoop {
   Node *condition{};
   Node *block{};
 };
+struct NumericForLoop {
+  Node *declaration{};
+  Node *end{};
+  Node *increment{};
+  Node *block{};
+};
+struct GenericForLoop {
+  List<std::string_view> names{};
+  List<> values{};
+  Node *block{};
+};
 struct Conditional {
   Node *condition{};
   Node *block{};
@@ -81,7 +92,7 @@ using Data =
     std::variant<std::monostate, Block, Chunk, LocalDeclaration, Assignment,
                  BinaryOperator, UnaryOperator, Return, Break, Number, Boolean,
                  Name, Subscript, Access, FunctionCall, MethodCall, WhileLoop,
-                 RepeatLoop, Conditional>;
+                 NumericForLoop, GenericForLoop, RepeatLoop, Conditional>;
 
 template <typename T> struct NodeName;
 #define DECLARE_NODE_NAME(type)                                                \
@@ -105,6 +116,8 @@ DECLARE_NODE_NAME(FunctionCall);
 DECLARE_NODE_NAME(MethodCall);
 DECLARE_NODE_NAME(WhileLoop);
 DECLARE_NODE_NAME(RepeatLoop);
+DECLARE_NODE_NAME(NumericForLoop);
+DECLARE_NODE_NAME(GenericForLoop);
 DECLARE_NODE_NAME(Conditional);
 
 #undef DECLARE_NODE_NAME

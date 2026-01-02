@@ -104,6 +104,18 @@ struct Visitor {
         {"block", node.block->toJson()},
         {"alternate", node.alternate->toJson()}};
   }
+  void operator()(const NumericForLoop &node) {
+    json[NodeName<NumericForLoop>::value] = {
+        {"declaration", node.declaration->toJson()},
+        {"end", node.end->toJson()},
+        {"increment", node.increment->toJson()},
+        {"block", node.block->toJson()}};
+  }
+  void operator()(const GenericForLoop &node) {
+    json[NodeName<GenericForLoop>::value] = {{"names", toJson(node.names)},
+                                             {"values", toJson(node.values)},
+                                             {"block", node.block->toJson()}};
+  }
 };
 } // namespace
 

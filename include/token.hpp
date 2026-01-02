@@ -12,7 +12,9 @@ public:
     Return,
     Break,
     Do,
+    In,
     While,
+    For,
     Repeat,
     Then,
     End,
@@ -69,8 +71,12 @@ public:
       return "Break";
     case Token::Type::Do:
       return "Do";
+    case Token::Type::In:
+      return "In";
     case Token::Type::While:
       return "While";
+    case Token::Type::For:
+      return "For";
     case Token::Type::Repeat:
       return "Repeat";
     case Token::Type::Then:

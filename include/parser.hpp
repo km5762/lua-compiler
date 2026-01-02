@@ -188,6 +188,9 @@ private:
     case Token::Type::If: {
       return parseConditional<inLoop>();
     }
+    case Token::Type::For: {
+      return parseForLoop();
+    }
     case Token::Type::Break:
       if constexpr (!inLoop) {
         throw BreakOutsideLoop(token);
@@ -245,7 +248,10 @@ private:
     return conditional;
   }
 
-  ast::List<std::string_view> parseNameList();
+  ast::Node *parseForLoop();
+
+  ast::List<std::string_view>
+  parseNameList(std::optional<std::string_view> first = std::nullopt);
   ast::List<> parseVariableList(ast::Node *first = nullptr);
   ast::List<> parseExpressionList(ast::Node *first = nullptr);
   ast::List<> parseArguments(ast::Node *first = nullptr);

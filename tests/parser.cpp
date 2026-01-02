@@ -1,14 +1,29 @@
 #include "parser.hpp"
 #include "ast.hpp"
+#include "token.hpp"
 
 #include <cstdlib>
 #include <format>
 #include <fstream>
 #include <iostream>
 #include <memory_resource>
+#include <string_view>
 
 void printFailure(const std::filesystem::path &path, std::string_view message) {
   std::cerr << path.filename().stem() << ": " << message << '\n';
+}
+
+std::string dumpTokens(std::string_view text) {
+  Scanner scanner{text};
+  Token token{scanner.advance()};
+  std::string dump{};
+
+  while (token.type != Token::Type::Eof) {
+    dump += std::string{Token::toString(token.type)} + ", ";
+    token = scanner.advance();
+  }
+
+  return dump;
 }
 
 int main() {
@@ -44,9 +59,11 @@ int main() {
       ast = Parser::parse(scanner, allocator);
     } catch (const ParseError &error) {
       std::string dump{error.ast->toJson().dump(2)};
-      printFailure(entry.path(),
-                   std::format("Unhandled parser error: {}\nPartial AST:\n{}\n",
-                               error.what(), dump));
+      printFailure(
+          entry.path(),
+          std::format(
+              "Unhandled parser error: {}\nPartial AST:\n{}\nToken dump:{}\n\n",
+              error.what(), dump, dumpTokens(input)));
       exitCode = EXIT_FAILURE;
       continue;
     }

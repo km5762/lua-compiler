@@ -46,8 +46,12 @@ Token Scanner::advance() {
       return makeToken(Token::Type::Else);
     } else if (word == "while") {
       return makeToken(Token::Type::While);
+    } else if (word == "for") {
+      return makeToken(Token::Type::For);
     } else if (word == "do") {
       return makeToken(Token::Type::Do);
+    } else if (word == "in") {
+      return makeToken(Token::Type::In);
     } else if (word == "repeat") {
       return makeToken(Token::Type::Repeat);
     } else if (word == "until") {

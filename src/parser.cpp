@@ -179,9 +179,52 @@ ast::Node *Parser::parseLed(Token token, ast::Node *left) {
   }
 }
 
-ast::List<std::string_view> Parser::parseNameList() {
+ast::Node *Parser::parseForLoop() {
+  Token name{consume(Token::Type::Name)};
+
+  if (match(Token::Type::Assign)) {
+    ast::Node *value{parseExpression()};
+    auto names{makeList<std::string_view>()};
+    ast::List<> values{makeList()};
+    names.push_back(name.data);
+    values.push_back(value);
+    ast::Node *declaration{makeNode(ast::LocalDeclaration{names, values})};
+    consume(Token::Type::Comma);
+
+    ast::Node *condition{parseExpression()};
+
+    ast::Node *increment{};
+    if (match(Token::Type::Comma)) {
+      increment = parseExpression();
+    }
+
+    consume(Token::Type::Do);
+    ast::Node *block{parseBlock<true>(Token::Type::End)};
+    consume(Token::Type::End);
+
+    return makeNode(
+        ast::NumericForLoop{declaration, condition, increment, block});
+  }
+
+  ast::List<std::string_view> names{parseNameList(name.data)};
+  consume(Token::Type::In);
+  ast::List<> values{parseExpressionList()};
+  consume(Token::Type::Do);
+  ast::Node *block{parseBlock<true>(Token::Type::End)};
+  consume(Token::Type::End);
+
+  return makeNode(ast::GenericForLoop{names, values, block});
+}
+
+ast::List<std::string_view>
+Parser::parseNameList(std::optional<std::string_view> first) {
   ast::List<std::string_view> list{};
-  list.push_back(consume(Token::Type::Name).data);
+  if (first) {
+    list.push_back(*first);
+  } else {
+    list.push_back(consume(Token::Type::Name).data);
+  }
+
   while (match(Token::Type::Comma)) {
     list.push_back(consume(Token::Type::Name).data);
   }

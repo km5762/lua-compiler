@@ -1,0 +1,51 @@
+{
+  "Chunk": {
+    "Block": {
+      "statements": [
+        {
+          "GenericForLoop": {
+            "names": [
+              "index",
+              "value"
+            ],
+            "values": [
+              {
+                "FunctionCall": {
+                  "operand": {
+                    "Name": "ipairs"
+                  },
+                  "arguments": [
+                    {
+                      "Name": "numbers"
+                    }
+                  ]
+                }
+              }
+            ],
+            "block": {
+              "Block": {
+                "statements": [
+                  {
+                    "FunctionCall": {
+                      "operand": {
+                        "Name": "print"
+                      },
+                      "arguments": [
+                        {
+                          "Name": "index"
+                        },
+                        {
+                          "Name": "value"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "Chunk": {
+    "Block": {
+      "statements": [
+        {
+          "NumericForLoop": {
+            "declaration": {
+              "LocalDeclaration": {
+                "names": [
+                  "i"
+                ],
+                "values": [
+                  {
+                    "Number": 10.0
+                  }
+                ]
+              }
+            },
+            "condition": {
+              "Number": 1.0
+            },
+            "increment": {
+              "UnaryOperator": {
+                "operator": "Minus",
+                "operand": {
+                  "Number": 1.0
+                }
+              }
+            },
+            "block": {
+              "Block": {
+                "statements": [
+                  {
+                    "FunctionCall": {
+                      "operand": {
+                        "Name": "print"
+                      },
+                      "arguments": [
+                        {
+                          "Name": "i"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
