@@ -3,57 +3,326 @@
     "Block": {
       "statements": [
         {
-          "FunctionDeclaration": {
-            "name": {
-              "Access": {
-                "operand": {
-                  "Name": "a"
-                },
-                "member": "b"
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "foo"
               }
-            },
-            "parameters": [
-              "self",
-              "x",
-              "y"
             ],
-            "block": {
-              "Block": {
-                "statements": [
-                  {
-                    "LocalDeclaration": {
-                      "names": [
-                        "z"
-                      ],
-                      "values": [
+            "values": [
+              {
+                "Function": {
+                  "parameters": [
+                    "a",
+                    "b"
+                  ],
+                  "block": {
+                    "Block": {
+                      "statements": [
                         {
-                          "BinaryOperator": {
-                            "operands": [
+                          "Return": {
+                            "values": [
                               {
-                                "Name": "x"
-                              },
-                              {
-                                "Name": "y"
+                                "BinaryOperator": {
+                                  "operands": [
+                                    {
+                                      "Name": "a"
+                                    },
+                                    {
+                                      "Name": "b"
+                                    }
+                                  ],
+                                  "operator": "Plus"
+                                }
                               }
-                            ],
-                            "operator": "Plus"
+                            ]
                           }
                         }
                       ]
                     }
-                  },
-                  {
-                    "Return": {
-                      "values": [
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "LocalDeclaration": {
+            "names": [
+              "bar"
+            ],
+            "values": [
+              {
+                "Function": {
+                  "parameters": [
+                    "x"
+                  ],
+                  "block": {
+                    "Block": {
+                      "statements": [
                         {
-                          "Name": "z"
+                          "Return": {
+                            "values": [
+                              {
+                                "BinaryOperator": {
+                                  "operands": [
+                                    {
+                                      "Name": "x"
+                                    },
+                                    {
+                                      "Number": 2.0
+                                    }
+                                  ],
+                                  "operator": "Times"
+                                }
+                              }
+                            ]
+                          }
                         }
                       ]
                     }
                   }
-                ]
+                }
               }
-            }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Name": "baz"
+              }
+            ],
+            "values": [
+              {
+                "Function": {
+                  "parameters": [
+                    "y"
+                  ],
+                  "block": {
+                    "Block": {
+                      "statements": [
+                        {
+                          "Return": {
+                            "values": [
+                              {
+                                "BinaryOperator": {
+                                  "operands": [
+                                    {
+                                      "Name": "y"
+                                    },
+                                    {
+                                      "Number": 1.0
+                                    }
+                                  ],
+                                  "operator": "Minus"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "LocalDeclaration": {
+            "names": [
+              "qux"
+            ],
+            "values": [
+              {
+                "Function": {
+                  "parameters": [],
+                  "block": {
+                    "Block": {
+                      "statements": [
+                        {
+                          "Return": {
+                            "values": [
+                              {
+                                "Number": 42.0
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Access": {
+                  "operand": {
+                    "Access": {
+                      "operand": {
+                        "Name": "mod"
+                      },
+                      "member": "util"
+                    }
+                  },
+                  "member": "add"
+                }
+              }
+            ],
+            "values": [
+              {
+                "Function": {
+                  "parameters": [
+                    "a",
+                    "b"
+                  ],
+                  "block": {
+                    "Block": {
+                      "statements": [
+                        {
+                          "Return": {
+                            "values": [
+                              {
+                                "BinaryOperator": {
+                                  "operands": [
+                                    {
+                                      "Name": "a"
+                                    },
+                                    {
+                                      "Name": "b"
+                                    }
+                                  ],
+                                  "operator": "Plus"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "Assignment": {
+            "variables": [
+              {
+                "Access": {
+                  "operand": {
+                    "Access": {
+                      "operand": {
+                        "Name": "obj"
+                      },
+                      "member": "member"
+                    }
+                  },
+                  "member": "method"
+                }
+              }
+            ],
+            "values": [
+              {
+                "Function": {
+                  "parameters": [
+                    "self",
+                    "x"
+                  ],
+                  "block": {
+                    "Block": {
+                      "statements": [
+                        {
+                          "Return": {
+                            "values": [
+                              {
+                                "BinaryOperator": {
+                                  "operands": [
+                                    {
+                                      "Access": {
+                                        "operand": {
+                                          "Name": "self"
+                                        },
+                                        "member": "value"
+                                      }
+                                    },
+                                    {
+                                      "Name": "x"
+                                    }
+                                  ],
+                                  "operator": "Plus"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "FunctionCall": {
+            "operand": {
+              "Name": "foo"
+            },
+            "arguments": [
+              {
+                "FunctionCall": {
+                  "operand": {
+                    "Name": "bar"
+                  },
+                  "arguments": [
+                    {
+                      "Number": 3.0
+                    }
+                  ]
+                }
+              },
+              {
+                "FunctionCall": {
+                  "operand": {
+                    "Name": "baz"
+                  },
+                  "arguments": [
+                    {
+                      "Number": 10.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "FunctionCall": {
+            "operand": {
+              "Access": {
+                "operand": {
+                  "Name": "obj"
+                },
+                "member": "method"
+              }
+            },
+            "arguments": [
+              {
+                "Name": "obj"
+              },
+              {
+                "Number": 5.0
+              }
+            ]
           }
         }
       ]

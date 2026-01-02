@@ -98,7 +98,6 @@ private:
   ast::List<T> makeList(std::initializer_list<T> values = {}) {
     return ast::List<T>(values, &m_allocator.get());
   }
-
   template <typename... T> bool matches(Token::Type type, T... types) {
     return ((type == types) || ...);
   }
@@ -160,46 +159,26 @@ private:
   ast::Node *parseStatement(T... delimiters) {
     Token token{m_scanner.get().advance()};
     switch (token.type) {
-    case Token::Type::Local: {
-      ast::List<std::string_view> nameList{parseNameList()};
-      ast::List<> expressionList{};
-
-      if (match(Token::Type::Assign)) {
-        expressionList = parseExpressionList();
-      }
-
-      return makeNode(ast::LocalDeclaration{nameList, expressionList});
-    }
-    case Token::Type::While: {
-      ast::Node *condition{parseExpression()};
-      consume(Token::Type::Do);
-      ast::Node *block{parseBlock<true>(Token::Type::End)};
-      consume(Token::Type::End);
-      return makeNode(ast::WhileLoop{condition, block});
-    }
-    case Token::Type::Repeat: {
-      ast::Node *block{parseBlock<true>(Token::Type::Until)};
-      consume(Token::Type::Until);
-      ast::Node *condition{parseExpression()};
-      return makeNode(ast::RepeatLoop{condition, block});
-    }
+    case Token::Type::Local:
+      return parseLocalDeclaration();
+    case Token::Type::While:
+      return parseWhileLoop();
+    case Token::Type::Repeat:
+      return parseRepeatLoop();
     case Token::Type::Return:
       return parseReturn(delimiters...);
-    case Token::Type::If: {
+    case Token::Type::If:
       return parseConditional<inLoop>();
-    }
-    case Token::Type::For: {
+    case Token::Type::For:
       return parseForLoop();
-    }
-    case Token::Type::Function: {
+    case Token::Type::Function:
       return parseFunctionDeclaration();
-    }
     case Token::Type::Break:
       if constexpr (!inLoop) {
         throw BreakOutsideLoop(token);
       }
       return makeNode(ast::Break{});
-    default: {
+    default:
       ast::Node *prefix{parsePrefixExpression(token)};
 
       if (match(Token::Type::Assign)) {
@@ -214,7 +193,6 @@ private:
       }
 
       return prefix;
-    }
     }
   }
 
@@ -251,9 +229,16 @@ private:
     return conditional;
   }
 
+  ast::Node *parseWhileLoop();
+  ast::Node *parseRepeatLoop();
+  ast::Node *parseLocalDeclaration();
   ast::Node *parseForLoop();
   ast::Node *parseFunctionDeclaration();
+  ast::Node *
+  parseFunction(std::optional<std::string_view> first = std::nullopt);
 
+  ast::List<std::string_view>
+  parseParameters(std::optional<std::string_view> first = std::nullopt);
   ast::List<std::string_view>
   parseNameList(std::optional<std::string_view> first = std::nullopt);
   ast::List<> parseVariableList(ast::Node *first = nullptr);

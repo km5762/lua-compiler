@@ -22,8 +22,7 @@ struct LocalDeclaration {
   List<std::string_view> names{};
   List<> values{};
 };
-struct FunctionDeclaration {
-  Node *name{};
+struct Function {
   List<std::string_view> parameters{};
   Node *block{};
 };
@@ -89,12 +88,11 @@ struct Conditional {
   Node *alternate{};
 };
 
-using Data =
-    std::variant<std::monostate, Block, Chunk, LocalDeclaration,
-                 FunctionDeclaration, Assignment, BinaryOperator, UnaryOperator,
-                 Return, Break, Number, Boolean, Name, Subscript, Access,
-                 FunctionCall, WhileLoop, NumericForLoop, GenericForLoop,
-                 RepeatLoop, Conditional>;
+using Data = std::variant<std::monostate, Block, Chunk, LocalDeclaration,
+                          Function, Assignment, BinaryOperator, UnaryOperator,
+                          Return, Break, Number, Boolean, Name, Subscript,
+                          Access, FunctionCall, WhileLoop, NumericForLoop,
+                          GenericForLoop, RepeatLoop, Conditional>;
 
 template <typename T> struct NodeName;
 #define DECLARE_NODE_NAME(type)                                                \
@@ -104,7 +102,7 @@ template <typename T> struct NodeName;
 DECLARE_NODE_NAME(Block);
 DECLARE_NODE_NAME(Chunk);
 DECLARE_NODE_NAME(LocalDeclaration);
-DECLARE_NODE_NAME(FunctionDeclaration);
+DECLARE_NODE_NAME(Function);
 DECLARE_NODE_NAME(Assignment);
 DECLARE_NODE_NAME(BinaryOperator);
 DECLARE_NODE_NAME(UnaryOperator);

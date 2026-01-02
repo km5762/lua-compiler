@@ -40,11 +40,9 @@ struct Visitor {
     json[NodeName<LocalDeclaration>::value] = {{"names", toJson(node.names)},
                                                {"values", toJson(node.values)}};
   }
-  void operator()(const FunctionDeclaration &node) {
-    json[NodeName<FunctionDeclaration>::value] = {
-        {"name", node.name->toJson()},
-        {"parameters", toJson(node.parameters)},
-        {"block", node.block->toJson()}};
+  void operator()(const Function &node) {
+    json[NodeName<Function>::value] = {{"parameters", toJson(node.parameters)},
+                                       {"block", node.block->toJson()}};
   }
   void operator()(const Assignment &node) {
     json[NodeName<Assignment>::value] = {{"variables", toJson(node.variables)},

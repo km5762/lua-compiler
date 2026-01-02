@@ -77,6 +77,8 @@ ast::Node *Parser::parseNud(Token token) {
     return makeNode(ast::Boolean{true});
   case Token::Type::Number:
     return parseNumber(token);
+  case Token::Type::Function:
+    return parseFunction();
   case Token::Type::Minus:
   case Token::Type::Not:
   case Token::Type::Length:
@@ -180,15 +182,45 @@ ast::Node *Parser::parseLed(Token token, ast::Node *left) {
   }
 }
 
+ast::Node *Parser::parseWhileLoop() {
+  ast::Node *condition{parseExpression()};
+  consume(Token::Type::Do);
+  ast::Node *block{parseBlock<true>(Token::Type::End)};
+  consume(Token::Type::End);
+  return makeNode(ast::WhileLoop{condition, block});
+}
+
+ast::Node *Parser::parseRepeatLoop() {
+  ast::Node *block{parseBlock<true>(Token::Type::Until)};
+  consume(Token::Type::Until);
+  ast::Node *condition{parseExpression()};
+  return makeNode(ast::RepeatLoop{condition, block});
+}
+
+ast::Node *Parser::parseLocalDeclaration() {
+  if (match(Token::Type::Function)) {
+    auto names{makeList<std::string_view>({consume(Token::Type::Name).data})};
+    ast::List<> values{makeList({parseFunction()})};
+    return makeNode(ast::LocalDeclaration{names, values});
+  }
+
+  ast::List<std::string_view> nameList{parseNameList()};
+  ast::List<> expressionList{};
+
+  if (match(Token::Type::Assign)) {
+    expressionList = parseExpressionList();
+  }
+
+  return makeNode(ast::LocalDeclaration{nameList, expressionList});
+}
+
 ast::Node *Parser::parseForLoop() {
   Token name{consume(Token::Type::Name)};
 
   if (match(Token::Type::Assign)) {
     ast::Node *value{parseExpression()};
-    auto names{makeList<std::string_view>()};
-    ast::List<> values{makeList()};
-    names.push_back(name.data);
-    values.push_back(value);
+    auto names{makeList<std::string_view>({name.data})};
+    ast::List<> values{makeList({value})};
     ast::Node *declaration{makeNode(ast::LocalDeclaration{names, values})};
     consume(Token::Type::Comma);
 
@@ -219,32 +251,33 @@ ast::Node *Parser::parseForLoop() {
 }
 
 ast::Node *Parser::parseFunctionDeclaration() {
-  ast::Node *current{makeNode(ast::Name{consume(Token::Type::Name).data})};
-  ast::Node *name;
-  if (match(Token::Type::Dot)) {
-    current = makeNode(ast::Access{current, consume(Token::Type::Name).data});
-    name = current;
+  ast::Node *name{makeNode(ast::Name{consume(Token::Type::Name).data})};
 
-    while (match(Token::Type::Dot)) {
-      current = makeNode(ast::Access{current, consume(Token::Type::Name).data});
-    }
+  while (match(Token::Type::Dot)) {
+    name = makeNode(ast::Access{name, consume(Token::Type::Name).data});
   }
 
-  auto parameters{makeList<std::string_view>()};
+  ast::Node *function{};
   if (match(Token::Type::Colon)) {
-    current = makeNode(ast::Access{current, consume(Token::Type::Name).data});
-    consume(Token::Type::LeftParenthesis);
-    parameters = parseNameList("self");
+    name = makeNode(ast::Access{name, consume(Token::Type::Name).data});
+    function = parseFunction("self");
   } else {
-    consume(Token::Type::LeftParenthesis);
-    parameters = parseNameList();
+    function = parseFunction();
   }
-  consume(Token::Type::RightParenthesis);
 
+  ast::List<> variables{makeList({name})};
+  ast::List<> values{makeList({function})};
+
+  return makeNode(ast::Assignment{variables, values});
+}
+
+ast::Node *Parser::parseFunction(std::optional<std::string_view> first) {
+  consume(Token::Type::LeftParenthesis);
+  ast::List<std::string_view> parameters{parseParameters(first)};
   ast::Node *block{parseBlock<false>(Token::Type::End)};
   consume(Token::Type::End);
 
-  return makeNode(ast::FunctionDeclaration{name, parameters, block});
+  return makeNode(ast::Function{parameters, block});
 }
 
 ast::List<std::string_view>
@@ -258,6 +291,22 @@ Parser::parseNameList(std::optional<std::string_view> first) {
   while (match(Token::Type::Comma)) {
     list.push_back(consume(Token::Type::Name).data);
   }
+  return list;
+}
+
+ast::List<std::string_view>
+Parser::parseParameters(std::optional<std::string_view> first) {
+  auto list{makeList<std::string_view>()};
+  if (match(Token::Type::RightParenthesis)) {
+    if (first) {
+      list.push_back(*first);
+      return list;
+    }
+    return list;
+  }
+
+  list = parseNameList(first);
+  consume(Token::Type::RightParenthesis);
   return list;
 }
 
