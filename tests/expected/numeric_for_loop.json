@@ -16,7 +16,7 @@
                 ]
               }
             },
-            "condition": {
+            "end": {
               "Number": 1.0
             },
             "increment": {

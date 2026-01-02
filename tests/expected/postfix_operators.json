@@ -79,7 +79,7 @@
           }
         },
         {
-          "MethodCall": {
+          "FunctionCall": {
             "operand": {
               "Access": {
                 "operand": {
@@ -94,6 +94,14 @@
               }
             },
             "arguments": [
+              {
+                "Access": {
+                  "operand": {
+                    "Name": "a"
+                  },
+                  "member": "b"
+                }
+              },
               {
                 "Name": "a"
               },

@@ -124,9 +124,10 @@ ast::Node *Parser::parsePrefixExpression(Token token) {
     }
     case Token::Type::Colon: {
       m_scanner.get().advance();
+      ast::Node *self{left};
       left = makeNode(ast::Access{left, consume(Token::Type::Name).data});
       consume(Token::Type::LeftParenthesis);
-      left = makeNode(ast::MethodCall{left, parseArguments()});
+      left = makeNode(ast::FunctionCall{left, parseArguments(self)});
       break;
     }
     default:
@@ -206,6 +207,7 @@ ast::Node *Parser::parseForLoop() {
         ast::NumericForLoop{declaration, condition, increment, block});
   }
 
+  consume(Token::Type::Comma);
   ast::List<std::string_view> names{parseNameList(name.data)};
   consume(Token::Type::In);
   ast::List<> values{parseExpressionList()};
@@ -216,14 +218,42 @@ ast::Node *Parser::parseForLoop() {
   return makeNode(ast::GenericForLoop{names, values, block});
 }
 
+ast::Node *Parser::parseFunctionDeclaration() {
+  ast::Node *current{makeNode(ast::Name{consume(Token::Type::Name).data})};
+  ast::Node *name;
+  if (match(Token::Type::Dot)) {
+    current = makeNode(ast::Access{current, consume(Token::Type::Name).data});
+    name = current;
+
+    while (match(Token::Type::Dot)) {
+      current = makeNode(ast::Access{current, consume(Token::Type::Name).data});
+    }
+  }
+
+  auto parameters{makeList<std::string_view>()};
+  if (match(Token::Type::Colon)) {
+    current = makeNode(ast::Access{current, consume(Token::Type::Name).data});
+    consume(Token::Type::LeftParenthesis);
+    parameters = parseNameList("self");
+  } else {
+    consume(Token::Type::LeftParenthesis);
+    parameters = parseNameList();
+  }
+  consume(Token::Type::RightParenthesis);
+
+  ast::Node *block{parseBlock<false>(Token::Type::End)};
+  consume(Token::Type::End);
+
+  return makeNode(ast::FunctionDeclaration{name, parameters, block});
+}
+
 ast::List<std::string_view>
 Parser::parseNameList(std::optional<std::string_view> first) {
-  ast::List<std::string_view> list{};
+  auto list{makeList<std::string_view>()};
   if (first) {
     list.push_back(*first);
-  } else {
-    list.push_back(consume(Token::Type::Name).data);
   }
+  list.push_back(consume(Token::Type::Name).data);
 
   while (match(Token::Type::Comma)) {
     list.push_back(consume(Token::Type::Name).data);

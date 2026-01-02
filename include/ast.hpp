@@ -22,6 +22,11 @@ struct LocalDeclaration {
   List<std::string_view> names{};
   List<> values{};
 };
+struct FunctionDeclaration {
+  Node *name{};
+  List<std::string_view> parameters{};
+  Node *block{};
+};
 struct Assignment {
   List<> variables{};
   List<> values{};
@@ -59,10 +64,6 @@ struct FunctionCall {
   Node *operand{};
   List<> arguments{};
 };
-struct MethodCall {
-  Node *operand{};
-  List<> arguments{};
-};
 struct WhileLoop {
   Node *condition{};
   Node *block{};
@@ -89,10 +90,11 @@ struct Conditional {
 };
 
 using Data =
-    std::variant<std::monostate, Block, Chunk, LocalDeclaration, Assignment,
-                 BinaryOperator, UnaryOperator, Return, Break, Number, Boolean,
-                 Name, Subscript, Access, FunctionCall, MethodCall, WhileLoop,
-                 NumericForLoop, GenericForLoop, RepeatLoop, Conditional>;
+    std::variant<std::monostate, Block, Chunk, LocalDeclaration,
+                 FunctionDeclaration, Assignment, BinaryOperator, UnaryOperator,
+                 Return, Break, Number, Boolean, Name, Subscript, Access,
+                 FunctionCall, WhileLoop, NumericForLoop, GenericForLoop,
+                 RepeatLoop, Conditional>;
 
 template <typename T> struct NodeName;
 #define DECLARE_NODE_NAME(type)                                                \
@@ -102,6 +104,7 @@ template <typename T> struct NodeName;
 DECLARE_NODE_NAME(Block);
 DECLARE_NODE_NAME(Chunk);
 DECLARE_NODE_NAME(LocalDeclaration);
+DECLARE_NODE_NAME(FunctionDeclaration);
 DECLARE_NODE_NAME(Assignment);
 DECLARE_NODE_NAME(BinaryOperator);
 DECLARE_NODE_NAME(UnaryOperator);
@@ -113,7 +116,6 @@ DECLARE_NODE_NAME(Name);
 DECLARE_NODE_NAME(Subscript);
 DECLARE_NODE_NAME(Access);
 DECLARE_NODE_NAME(FunctionCall);
-DECLARE_NODE_NAME(MethodCall);
 DECLARE_NODE_NAME(WhileLoop);
 DECLARE_NODE_NAME(RepeatLoop);
 DECLARE_NODE_NAME(NumericForLoop);

@@ -26,6 +26,8 @@ Token Scanner::advance() {
       return makeToken(Token::Type::Return);
     } else if (word == "local") {
       return makeToken(Token::Type::Local);
+    } else if (word == "function") {
+      return makeToken(Token::Type::Function);
     } else if (word == "or") {
       return makeToken(Token::Type::Or);
     } else if (word == "and") {

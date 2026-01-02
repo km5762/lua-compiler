@@ -191,6 +191,9 @@ private:
     case Token::Type::For: {
       return parseForLoop();
     }
+    case Token::Type::Function: {
+      return parseFunctionDeclaration();
+    }
     case Token::Type::Break:
       if constexpr (!inLoop) {
         throw BreakOutsideLoop(token);
@@ -249,6 +252,7 @@ private:
   }
 
   ast::Node *parseForLoop();
+  ast::Node *parseFunctionDeclaration();
 
   ast::List<std::string_view>
   parseNameList(std::optional<std::string_view> first = std::nullopt);

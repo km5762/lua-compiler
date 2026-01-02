@@ -9,6 +9,7 @@ public:
     Invalid,
     Name,
     Local,
+    Function,
     Return,
     Break,
     Do,
@@ -65,6 +66,8 @@ public:
       return "Name";
     case Token::Type::Local:
       return "Local";
+    case Token::Type::Function:
+      return "Function";
     case Token::Type::Return:
       return "Return";
     case Token::Type::Break:

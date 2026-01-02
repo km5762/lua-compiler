@@ -1,0 +1,62 @@
+{
+  "Chunk": {
+    "Block": {
+      "statements": [
+        {
+          "FunctionDeclaration": {
+            "name": {
+              "Access": {
+                "operand": {
+                  "Name": "a"
+                },
+                "member": "b"
+              }
+            },
+            "parameters": [
+              "self",
+              "x",
+              "y"
+            ],
+            "block": {
+              "Block": {
+                "statements": [
+                  {
+                    "LocalDeclaration": {
+                      "names": [
+                        "z"
+                      ],
+                      "values": [
+                        {
+                          "BinaryOperator": {
+                            "operands": [
+                              {
+                                "Name": "x"
+                              },
+                              {
+                                "Name": "y"
+                              }
+                            ],
+                            "operator": "Plus"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "Return": {
+                      "values": [
+                        {
+                          "Name": "z"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
