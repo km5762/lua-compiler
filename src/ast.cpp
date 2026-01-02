@@ -101,7 +101,8 @@ struct Visitor {
   void operator()(const Conditional &node) {
     json[NodeName<Conditional>::value] = {
         {"condition", node.condition->toJson()},
-        {"block", node.block->toJson()}};
+        {"block", node.block->toJson()},
+        {"alternate", node.alternate->toJson()}};
   }
 };
 } // namespace

@@ -74,6 +74,7 @@ struct RepeatLoop {
 struct Conditional {
   Node *condition{};
   Node *block{};
+  Node *alternate{};
 };
 
 using Data =

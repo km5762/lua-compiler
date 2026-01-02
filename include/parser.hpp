@@ -117,11 +117,6 @@ private:
     Token token{m_scanner.get().peek()};
 
     if (!matches(token.type, types...)) {
-      std::string expected =
-          ((std::string{Token::toString(types)} + ", ") + ...);
-      if (!expected.empty())
-        expected = expected.substr(0, expected.size() - 2);
-
       throw UnexpectedToken{token, types...};
     }
 
@@ -160,6 +155,7 @@ private:
     }
     return makeNode(ast::Return{parseExpressionList()});
   }
+
   template <bool inLoop, typename... T>
   ast::Node *parseStatement(T... delimiters) {
     Token token{m_scanner.get().advance()};
@@ -189,6 +185,9 @@ private:
     }
     case Token::Type::Return:
       return parseReturn(delimiters...);
+    case Token::Type::If: {
+      return parseConditional<inLoop>();
+    }
     case Token::Type::Break:
       if constexpr (!inLoop) {
         throw BreakOutsideLoop(token);
@@ -212,6 +211,40 @@ private:
     }
     }
   }
+
+  template <bool inLoop> ast::Node *parseConditional() {
+    ast::Node *condition{parseExpression()};
+    consume(Token::Type::Then);
+    ast::Node *block{parseBlock<inLoop>(Token::Type::ElseIf, Token::Type::Else,
+                                        Token::Type::End)};
+
+    ast::Node *conditional{makeNode(ast::Conditional{condition, block})};
+    ast::Node *current{conditional};
+    while (match(Token::Type::ElseIf)) {
+      ast::Node *alternateCondition{parseExpression()};
+      consume(Token::Type::Then);
+      ast::Node *alternateBlock{
+          parseBlock<inLoop>(Token::Type::ElseIf, Token::Type::Else)};
+      ast::Node *alternate{
+          makeNode(ast::Conditional{alternateCondition, alternateBlock})};
+      ast::Conditional &currentConditional{
+          std::get<ast::Conditional>(current->data)};
+      currentConditional.alternate = alternate;
+      current = alternate;
+    }
+
+    if (match(Token::Type::Else)) {
+      ast::Node *alternateBlock{parseBlock<inLoop>(Token::Type::End)};
+      ast::Conditional &currentConditional{
+          std::get<ast::Conditional>(current->data)};
+      currentConditional.alternate = alternateBlock;
+    }
+
+    consume(Token::Type::End);
+
+    return conditional;
+  }
+
   ast::List<std::string_view> parseNameList();
   ast::List<> parseVariableList(ast::Node *first = nullptr);
   ast::List<> parseExpressionList(ast::Node *first = nullptr);

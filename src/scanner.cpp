@@ -38,6 +38,8 @@ Token Scanner::advance() {
       return makeToken(Token::Type::End);
     } else if (word == "if") {
       return makeToken(Token::Type::If);
+    } else if (word == "then") {
+      return makeToken(Token::Type::Then);
     } else if (word == "elseif") {
       return makeToken(Token::Type::ElseIf);
     } else if (word == "else") {
