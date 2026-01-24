@@ -2,6 +2,10 @@ add_library(lua_compiler_lib
   ast.cpp
   parser.cpp
   scanner.cpp
+  bytecode_generator.cpp
+  compilation.cpp
+  instructions.cpp
+  virtual_machine.cpp
 )
 
 target_include_directories(lua_compiler_lib

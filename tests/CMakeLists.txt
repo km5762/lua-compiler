@@ -6,12 +6,21 @@ add_executable(update_tests
   update.cpp
 )
 
+add_executable(virtual_machine_tests
+  virtual_machine.cpp
+)
+
 target_link_libraries(parser_tests
   PRIVATE
     lua_compiler_lib
 )
 
 target_link_libraries(update_tests
+  PRIVATE
+    lua_compiler_lib
+)
+
+target_link_libraries(virtual_machine_tests
   PRIVATE
     lua_compiler_lib
 )
