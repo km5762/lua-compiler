@@ -9,18 +9,22 @@
 #include <memory_resource>
 #include <string_view>
 
+namespace {
+std::pmr::monotonic_buffer_resource allocator{};
+}
+
 void printFailure(const std::filesystem::path &path, std::string_view message) {
   std::cerr << path.filename().stem() << ": " << message << '\n';
 }
 
 std::string dumpTokens(std::string_view text) {
-  Scanner scanner{text};
-  Token token{scanner.advance()};
+  Scanner scanner{text, allocator};
+  Token token{*scanner.advance()};
   std::string dump{};
 
   while (token.type != Token::Type::Eof) {
     dump += std::string{Token::toString(token.type)} + ", ";
-    token = scanner.advance();
+    token = *scanner.advance();
   }
 
   return dump;
@@ -52,28 +56,22 @@ int main() {
     std::string expected{(std::istreambuf_iterator<char>(expectedFile)),
                          std::istreambuf_iterator<char>()};
 
-    Scanner scanner{input};
-    std::pmr::monotonic_buffer_resource allocator{};
-    ast::Node *ast{};
-    try {
-      ast = Parser::parse(scanner, allocator);
-    } catch (const ParseError &error) {
-      std::string dump{error.ast->toJson().dump(2)};
-      printFailure(
-          entry.path(),
-          std::format(
-              "Unhandled parser error: {}\nPartial AST:\n{}\nToken dump:{}\n\n",
-              error.what(), dump, dumpTokens(input)));
+    Scanner scanner{input, allocator};
+    Result<ast::Node *> result{Parser::parse(scanner, allocator)};
+    if (!result) {
+      printFailure(entry.path(),
+                   std::format("Unhandled parser error: {}\nToken dump:{}\n\n",
+                               result.error().message, dumpTokens(input)));
       exitCode = EXIT_FAILURE;
       continue;
     }
 
-    if (!ast) {
+    if (!*result) {
       printFailure(entry.path(), "Expected valid AST, got nullptr");
       exitCode = EXIT_FAILURE;
     }
 
-    ast::Json json(ast->toJson());
+    ast::Json json((*result)->toJson());
     ast::Json expectedJson(ast::Json::parse(expected));
     if (json != expectedJson) {
       ast::Json diff(ast::Json::diff(expectedJson, json));
@@ -92,18 +90,10 @@ int main() {
     std::ifstream inputFile{entry.path()};
     std::string input{(std::istreambuf_iterator<char>(inputFile)),
                       std::istreambuf_iterator<char>()};
-    Scanner scanner{input};
-    std::pmr::monotonic_buffer_resource allocator{};
-    ast::Node *ast{};
-    bool threw{false};
-    try {
-      ast = Parser::parse(scanner, allocator);
-    } catch (const ParseError &) {
-      threw = true;
-    }
-
-    if (!threw) {
-      std::string dump{ast ? ast->toJson().dump(2) : ""};
+    Scanner scanner{input, allocator};
+    Result<ast::Node *> result{Parser::parse(scanner, allocator)};
+    if (result) {
+      std::string dump{*result ? (*result)->toJson().dump(2) : ""};
       printFailure(entry.path(),
                    std::format("Expected failure, got AST:\n{}\n", dump));
       exitCode = EXIT_FAILURE;

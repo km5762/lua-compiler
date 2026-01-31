@@ -116,6 +116,9 @@ struct Visitor {
                                              {"values", toJson(node.values)},
                                              {"block", node.block->toJson()}};
   }
+  void operator()(const String &node) {
+    json[NodeName<String>::value] = {node.value};
+  }
 };
 } // namespace
 

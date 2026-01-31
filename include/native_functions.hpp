@@ -13,3 +13,8 @@ Value print(std::span<Value> arguments) {
 
   return {};
 }
+
+Value error(std::span<Value> arguments) {
+  std::cout << arguments[0].toString();
+  exit(EXIT_FAILURE);
+}

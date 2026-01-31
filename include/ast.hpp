@@ -87,12 +87,15 @@ struct Conditional {
   Node *block{};
   Node *alternate{};
 };
+struct String {
+  std::string_view value{};
+};
 
 using Data = std::variant<std::monostate, Block, Chunk, LocalDeclaration,
                           Function, Assignment, BinaryOperator, UnaryOperator,
                           Return, Break, Number, Boolean, Name, Subscript,
                           Access, FunctionCall, WhileLoop, NumericForLoop,
-                          GenericForLoop, RepeatLoop, Conditional>;
+                          GenericForLoop, RepeatLoop, Conditional, String>;
 
 template <typename T> struct NodeName;
 #define DECLARE_NODE_NAME(type)                                                \
@@ -119,6 +122,7 @@ DECLARE_NODE_NAME(RepeatLoop);
 DECLARE_NODE_NAME(NumericForLoop);
 DECLARE_NODE_NAME(GenericForLoop);
 DECLARE_NODE_NAME(Conditional);
+DECLARE_NODE_NAME(String);
 
 #undef DECLARE_NODE_NAME
 

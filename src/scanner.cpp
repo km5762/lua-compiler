@@ -11,7 +11,7 @@ void Scanner::skipWhitespace() {
   }
 }
 
-Token Scanner::advance() {
+Result<Token> Scanner::advance() {
   skipWhitespace();
 
   m_startCursor = m_cursor;
@@ -63,13 +63,16 @@ Token Scanner::advance() {
     } else if (word == "true") {
       return makeToken(Token::Type::True);
     } else {
-      return makeToken(Token::Type::Name, word);
+      return makeToken(Token::Type::Name);
     }
   } else if (std::isdigit(static_cast<unsigned char>(c))) {
     return scanNumber();
   }
 
   switch (c) {
+  case '\'':
+  case '"':
+    return scanString();
   case '(':
     return makeToken(Token::Type::LeftParenthesis);
   case ')':
@@ -141,7 +144,7 @@ Token Scanner::advance() {
 
 std::string_view Scanner::scanWord() {
   while (true) {
-    char c = peekChar();
+    char c{peekChar()};
     if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
       break;
     }
@@ -152,10 +155,9 @@ std::string_view Scanner::scanWord() {
   return std::string_view{&m_text[m_startCursor], m_cursor - m_startCursor};
 }
 
-Token Scanner::scanNumber() {
+Result<Token> Scanner::scanNumber() {
   while (true) {
-    char c = peekChar();
-
+    char c{peekChar()};
     if (!std::isdigit(static_cast<unsigned char>(c)) && c != '.') {
       break;
     }
@@ -164,4 +166,89 @@ Token Scanner::scanNumber() {
   }
 
   return makeToken(Token::Type::Number);
+}
+
+Result<Token> Scanner::scanString() {
+  const char delimiter{m_text[m_startCursor]};
+  const std::size_t start{m_cursor};
+  bool escape{};
+
+  while (true) {
+    char c{advanceChar()};
+    if (c == '\0') {
+      return std::unexpected{
+          makeError(ScannerErrorCode::UnterminatedStringLiteral)};
+    }
+    if (c == delimiter) {
+      break;
+    }
+  }
+
+  const std::size_t size{m_cursor - start - 1};
+  Result<std::string_view> unescaped{unescapeString({&m_text[start], size})};
+  if (!unescaped) {
+    return std::unexpected{unescaped.error()};
+  }
+
+  return makeToken(Token::Type::String, *unescaped);
+}
+
+Result<std::string_view> Scanner::unescapeString(std::string_view string) {
+  char *unescaped{
+      static_cast<char *>(m_allocator.get().allocate(string.size()))};
+  if (!unescaped) {
+    throw std::bad_alloc{};
+  }
+
+  std::size_t i{};
+  for (std::size_t j{}; j < string.size(); ++j) {
+    if (string[j] != '\\') {
+      unescaped[i++] = string[j];
+      continue;
+    }
+
+    if (j + 1 > string.size()) {
+      return std::unexpected{
+          makeError(ScannerErrorCode::UnterminatedStringLiteral)};
+    }
+
+    const char c{string[++j]};
+    switch (c) {
+    case 'a':
+      unescaped[i++] = '\a';
+      break;
+    case 'b':
+      unescaped[i++] = '\b';
+      break;
+    case 'f':
+      unescaped[i++] = '\f';
+      break;
+    case 'n':
+      unescaped[i++] = '\n';
+      break;
+    case 'r':
+      unescaped[i++] = '\r';
+      break;
+    case 't':
+      unescaped[i++] = '\t';
+      break;
+    case 'v':
+      unescaped[i++] = '\v';
+      break;
+    case '\\':
+      unescaped[i++] = '\\';
+      break;
+    case '\'':
+      unescaped[i++] = '\'';
+      break;
+    case '"':
+      unescaped[i++] = '"';
+      break;
+    case '?':
+      unescaped[i++] = '\?';
+      break;
+    }
+  }
+
+  return unescaped;
 }

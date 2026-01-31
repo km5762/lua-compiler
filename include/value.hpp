@@ -9,6 +9,7 @@ struct Value;
 struct VirtualMachine;
 
 using RegisterIndex = uint64_t;
+using StringSize = std::size_t;
 using NativeFunction = Value (*)(std::span<Value> arguments);
 
 struct Function;
@@ -16,6 +17,7 @@ struct Function;
 struct Value {
   enum class Type {
     Number,
+    String,
     Function,
     NativeFunction,
   };
@@ -23,12 +25,14 @@ struct Value {
   Type type{};
   union {
     double number;
+    StringSize *string;
     Function *function;
     NativeFunction nativeFunction;
   } data;
 
   Value() = default;
   Value(double number) : type{Type::Number} { data.number = number; }
+  Value(StringSize *string) : type{Type::String} { data.string = string; }
   Value(Function *function) : type{Type::Function} { data.function = function; }
   Value(NativeFunction nativeFunction) : type{Type::NativeFunction} {
     data.nativeFunction = nativeFunction;
@@ -38,6 +42,11 @@ struct Value {
     switch (type) {
     case Type::Number:
       return std::to_string(data.number);
+    case Type::String: {
+      const StringSize length{*data.string};
+      const char *string{reinterpret_cast<const char *>(data.string + 1)};
+      return std::string{string, length};
+    }
     case Type::Function:
       return "function: " +
              std::to_string(reinterpret_cast<uintptr_t>(data.function));

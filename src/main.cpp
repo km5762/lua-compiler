@@ -1,32 +1,25 @@
-#include <iostream>
-#include <memory_resource>
+#include "compilation.hpp"
 
-#include "parser.hpp"
-#include "scanner.hpp"
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 
 int main(int argc, char *argv[]) {
-  std::string_view program = R"(
-local a, b, c = 1, 2 + 3 * 4, -(5 ^ 2);
-local x, y;
-x = a + b
-y = x % 3
-local flag = a < b and b ~= c or not y
-local z = a .. b .. c
-local p = (a + b) * c
-obj.value = arr[1 + 2] * obj.other
-result = obj.inner.field[10].leaf
-foo(a, b, c)
-bar((a + b) * c, not flag)
-obj:method(a, b + c)
-obj:getInner().compute(a ^ b, -c)
-    break;
-  )";
-
-  Scanner scanner{program};
-  std::pmr::monotonic_buffer_resource allocator{1024};
-  ast::Node *ast{Parser::parse(scanner, allocator)};
-
-  if (ast) {
-    std::cout << ast->toJson().dump() << std::endl;
+  if (argc < 2) {
+    std::cerr << "Expected path to program\n";
+    return EXIT_FAILURE;
   }
+
+  std::string path{argv[1]};
+  std::ifstream file{path};
+  if (!file.is_open()) {
+    std::cerr << "Error opening program: " << path << '\n';
+    return EXIT_FAILURE;
+  }
+
+  std::string program{std::istreambuf_iterator<char>{file},
+                      std::istreambuf_iterator<char>{}};
+  compilation::run(program);
+
+  return EXIT_SUCCESS;
 }

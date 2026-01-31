@@ -6,11 +6,16 @@
 #include "virtual_machine.hpp"
 
 namespace compilation {
-void run(std::string_view program) {
-  Scanner scanner{program};
+std::optional<Error> run(std::string_view program) {
   std::pmr::monotonic_buffer_resource allocator{};
-  ast::Node *node{Parser::parse(scanner, allocator)};
-  Function function{BytecodeGenerator::generate(*node, allocator)};
+  Scanner scanner{program, allocator};
+  Result<ast::Node *> result{Parser::parse(scanner, allocator)};
+  if (!result) {
+    return result.error();
+  }
+  Function function{BytecodeGenerator::generate(**result, allocator)};
   VirtualMachine::run(function);
+
+  return {};
 }
 } // namespace compilation

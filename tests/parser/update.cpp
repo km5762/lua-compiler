@@ -12,6 +12,7 @@ void printFailure(const std::filesystem::path &path, std::string_view message) {
 }
 
 int main() {
+  std::pmr::monotonic_buffer_resource allocator{};
   std::filesystem::path sourceDir =
       std::filesystem::path(__FILE__).parent_path();
   std::filesystem::path inputPath = sourceDir / "input";
@@ -26,24 +27,20 @@ int main() {
         sourceDir / std::filesystem::path{"expected"} / entry.path().stem()};
     expectedFilePath += ".json";
     std::ofstream expectedFile{expectedFilePath};
-    Scanner scanner{input};
+    Scanner scanner{input, allocator};
     std::pmr::monotonic_buffer_resource allocator{};
-    ast::Node *ast{};
-    try {
-      ast = Parser::parse(scanner, allocator);
-    } catch (const ParseError &error) {
-      std::string dump{error.ast->toJson().dump(2)};
-      printFailure(entry.path(),
-                   std::format("Unhandled parser error: {}\nPartial AST:\n{}\n",
-                               error.what(), dump));
+    Result<ast::Node *> result{Parser::parse(scanner, allocator)};
+    if (!result) {
+      printFailure(entry.path(), std::format("Unhandled parser error: {}\n",
+                                             result.error().message));
       continue;
     }
 
-    if (!ast) {
+    if (!result) {
       printFailure(entry.path(), "Expected valid AST, got nullptr");
     }
 
-    ast::Json json(ast->toJson());
+    ast::Json json((*result)->toJson());
     expectedFile << json.dump(2);
   }
 }

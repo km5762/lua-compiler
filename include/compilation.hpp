@@ -1,7 +1,8 @@
 #pragma once
 
+#include "error.hpp"
 #include <string_view>
 
 namespace compilation {
-void run(std::string_view program);
+std::optional<Error> run(std::string_view program);
 }

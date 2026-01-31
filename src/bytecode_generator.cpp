@@ -143,6 +143,21 @@ BytecodeGenerator::Visitor::operator()(const ast::NumericForLoop &node) {}
 RegisterIndex
 BytecodeGenerator::Visitor::operator()(const ast::GenericForLoop &node) {}
 
+RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::String &node) {
+  const RegisterIndex destinationIndex{generator.state().allocateRegister()};
+  void *buffer{generator.m_allocator.get().allocate(
+      sizeof(StringSize) + node.value.size(), alignof(StringSize))};
+  auto *string{static_cast<StringSize *>(buffer)};
+  *string = node.value.size();
+  std::memcpy(string + 1, node.value.data(), node.value.size());
+
+  generator.state().instructionWriter.write(
+      Operation::LoadConstant, destinationIndex,
+      generator.state().addConstant(string));
+
+  return destinationIndex;
+}
+
 void BytecodeGenerator::defineNativeFunctions() {
   const std::array nativeFunctions{
       std::pair<std::string_view, NativeFunction>{"print", print},

@@ -35,6 +35,7 @@ private:
     RegisterIndex operator()(const ast::Conditional &node);
     RegisterIndex operator()(const ast::NumericForLoop &node);
     RegisterIndex operator()(const ast::GenericForLoop &node);
+    RegisterIndex operator()(const ast::String &node);
   };
 
   struct Symbol {
