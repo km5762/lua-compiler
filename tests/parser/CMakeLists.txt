@@ -16,4 +16,4 @@ target_link_libraries(update_tests
     lua_compiler_lib
 )
 
-add_test(NAME parsers_tests COMMAND parser_tests)
+add_test(NAME parser_tests COMMAND parser_tests)

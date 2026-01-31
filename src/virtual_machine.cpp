@@ -31,19 +31,39 @@ void VirtualMachine::run() {
     case Operation::Divide:
       binaryOperation(std::divides{});
       break;
+    case Operation::Equal:
+      binaryOperation(std::equal_to{});
+      break;
+    case Operation::NotEqual:
+      binaryOperation(std::not_equal_to{});
+      break;
+    case Operation::LessThan:
+      binaryOperation(std::less{});
+      break;
+    case Operation::LessThanOrEqual:
+      binaryOperation(std::less_equal{});
+      break;
+    case Operation::GreaterThan:
+      binaryOperation(std::greater{});
+      break;
+    case Operation::GreaterThanOrEqual:
+      binaryOperation(std::greater_equal{});
+      break;
     case Operation::CallFunction:
       callFunction();
       break;
     case Operation::Move:
       move();
       break;
+    case Operation::LoadUpvalue:
+      break;
     }
   }
 }
 
 void VirtualMachine::loadConstant() {
-  const RegisterIndex constantIndex{frame().instructionReader.readOperand()};
   const RegisterIndex registerIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex constantIndex{frame().instructionReader.readOperand()};
   frame().registers[registerIndex] = frame().function->constants[constantIndex];
 }
 

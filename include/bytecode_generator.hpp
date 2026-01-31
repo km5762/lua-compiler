@@ -9,7 +9,8 @@
 class BytecodeGenerator {
 public:
   static Function generate(const ast::Node &node,
-                           std::pmr::memory_resource &allocator);
+                           std::pmr::memory_resource &compilerAllocator,
+                           std::pmr::memory_resource &runtimeAllocator);
 
 private:
   struct Visitor {
@@ -84,11 +85,12 @@ private:
     InstructionWriter instructionWriter;
     SymbolTable symbolTable{};
 
-    State(std::pmr::memory_resource &allocator, State *outer = nullptr)
-        : m_allocator{&allocator}, outer{outer},
-          function{std::pmr::vector<uint8_t>(&allocator),
-                   std::pmr::vector<Value>(&allocator)},
-          instructionWriter(function.instructions), symbolTable{&allocator} {}
+    State(std::pmr::memory_resource &compilerAllocator,
+          std::pmr::memory_resource &runtimeAllocator, State *outer = nullptr)
+        : outer{outer}, function{std::pmr::vector<uint8_t>(&runtimeAllocator),
+                                 std::pmr::vector<Value>(&runtimeAllocator)},
+          instructionWriter(function.instructions),
+          symbolTable{&compilerAllocator} {}
 
     template <typename... Args> RegisterIndex addConstant(Args &&...args) {
       function.constants.emplace_back(std::forward<Args>(args)...);
@@ -98,16 +100,16 @@ private:
     RegisterIndex allocateRegister() { return function.registerCount++; }
     RegisterIndex nextRegister() { return function.registerCount; }
     RegisterIndex lastRegister() { return function.registerCount - 1; }
-
-  private:
-    std::pmr::memory_resource *m_allocator{};
   };
-  std::reference_wrapper<std::pmr::memory_resource> m_allocator;
+  std::reference_wrapper<std::pmr::memory_resource> m_compilerAllocator;
+  std::reference_wrapper<std::pmr::memory_resource> m_runtimeAllocator;
   std::pmr::vector<State> m_states{};
 
-  BytecodeGenerator(std::pmr::memory_resource &allocator)
-      : m_allocator{allocator}, m_states(&allocator) {
-    m_states.emplace_back(allocator);
+  BytecodeGenerator(std::pmr::memory_resource &compilerAllocator,
+                    std::pmr::memory_resource &runtimeAllocator)
+      : m_compilerAllocator{compilerAllocator},
+        m_runtimeAllocator{runtimeAllocator}, m_states(&compilerAllocator) {
+    m_states.emplace_back(compilerAllocator, runtimeAllocator);
   }
 
   void defineNativeFunctions();

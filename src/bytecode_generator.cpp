@@ -3,10 +3,13 @@
 #include "instructions.hpp"
 #include "native_functions.hpp"
 #include "token.hpp"
+#include <utility>
 
-Function BytecodeGenerator::generate(const ast::Node &node,
-                                     std::pmr::memory_resource &allocator) {
-  BytecodeGenerator generator{allocator};
+Function
+BytecodeGenerator::generate(const ast::Node &node,
+                            std::pmr::memory_resource &compilerAllocator,
+                            std::pmr::memory_resource &runtimeAllocator) {
+  BytecodeGenerator generator{compilerAllocator, runtimeAllocator};
   generator.defineNativeFunctions();
   BytecodeGenerator::Visitor visitor{generator};
   std::visit(visitor, node.data);
@@ -57,6 +60,24 @@ BytecodeGenerator::Visitor::operator()(const ast::BinaryOperator &node) {
     break;
   case Token::Type::Divide:
     operation = Operation::Divide;
+    break;
+  case Token::Type::Equal:
+    operation = Operation::Equal;
+    break;
+  case Token::Type::NotEqual:
+    operation = Operation::NotEqual;
+    break;
+  case Token::Type::LessThan:
+    operation = Operation::LessThan;
+    break;
+  case Token::Type::LessThanOrEqual:
+    operation = Operation::LessThanOrEqual;
+    break;
+  case Token::Type::GreaterThan:
+    operation = Operation::GreaterThan;
+    break;
+  case Token::Type::GreaterThanOrEqual:
+    operation = Operation::GreaterThanOrEqual;
     break;
   default:
     std::unreachable();
@@ -145,9 +166,9 @@ BytecodeGenerator::Visitor::operator()(const ast::GenericForLoop &node) {}
 
 RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::String &node) {
   const RegisterIndex destinationIndex{generator.state().allocateRegister()};
-  void *buffer{generator.m_allocator.get().allocate(
-      sizeof(StringSize) + node.value.size(), alignof(StringSize))};
-  auto *string{static_cast<StringSize *>(buffer)};
+  auto *string{
+      static_cast<StringSize *>(generator.m_compilerAllocator.get().allocate(
+          sizeof(StringSize) + node.value.size(), alignof(StringSize)))};
   *string = node.value.size();
   std::memcpy(string + 1, node.value.data(), node.value.size());
 
@@ -160,7 +181,9 @@ RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::String &node) {
 
 void BytecodeGenerator::defineNativeFunctions() {
   const std::array nativeFunctions{
-      std::pair<std::string_view, NativeFunction>{"print", print},
+      std::pair<std::string_view, NativeFunction>{"print", native::print},
+      std::pair<std::string_view, NativeFunction>{"error", native::error},
+      std::pair<std::string_view, NativeFunction>{"assert", native::lua_assert},
   };
 
   for (const auto &[name, function] : nativeFunctions) {
@@ -168,8 +191,9 @@ void BytecodeGenerator::defineNativeFunctions() {
     const RegisterIndex registerIndex{global().allocateRegister()};
     global().instructionWriter.write(Operation::LoadConstant, registerIndex,
                                      constantIndex);
-    global().symbolTable.try_emplace(std::pmr::string{name, &m_allocator.get()},
-                                     Symbol{registerIndex, false});
+    global().symbolTable.try_emplace(
+        std::pmr::string{name, &m_compilerAllocator.get()},
+        Symbol{registerIndex, false});
   };
 }
 
@@ -182,7 +206,7 @@ BytecodeGenerator::resolve(std::string_view name) {
 
   State *current{&state()};
   State *currentOuter{state().outer};
-  std::pmr::string key{name, &m_allocator.get()};
+  std::pmr::string key{name, &m_compilerAllocator.get()};
   while (currentOuter) {
     current->symbolTable.insert_or_assign(
         key, Symbol{current->function.upvalues.size(), true});

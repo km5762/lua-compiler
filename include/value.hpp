@@ -20,6 +20,7 @@ struct Value {
     String,
     Function,
     NativeFunction,
+    Boolean,
   };
 
   Type type{};
@@ -28,6 +29,7 @@ struct Value {
     StringSize *string;
     Function *function;
     NativeFunction nativeFunction;
+    bool boolean;
   } data;
 
   Value() = default;
@@ -37,6 +39,7 @@ struct Value {
   Value(NativeFunction nativeFunction) : type{Type::NativeFunction} {
     data.nativeFunction = nativeFunction;
   }
+  Value(bool boolean) : type{Type::Boolean} { data.boolean = boolean; }
 
   std::string toString() const {
     switch (type) {
@@ -53,6 +56,9 @@ struct Value {
     case Type::NativeFunction:
       return "nativeFunction: " +
              std::to_string(reinterpret_cast<uintptr_t>(data.nativeFunction));
+      break;
+    case Type::Boolean:
+      return data.boolean ? "true" : "false";
       break;
     }
   }

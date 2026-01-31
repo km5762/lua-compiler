@@ -6,6 +6,7 @@ add_library(lua_compiler_lib
   compilation.cpp
   instructions.cpp
   virtual_machine.cpp
+  native_functions.cpp
 )
 
 target_include_directories(lua_compiler_lib
