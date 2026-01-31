@@ -1,5 +1,6 @@
 #include "virtual_machine.hpp"
 #include "instructions.hpp"
+#include <cmath>
 #include <functional>
 #include <utility>
 
@@ -30,6 +31,15 @@ void VirtualMachine::run() {
       break;
     case Operation::Divide:
       binaryOperation(std::divides{});
+      break;
+    case Operation::Modulo:
+      binaryOperation([](auto a, auto b) { return std::fmod(a, b); });
+      break;
+    case Operation::Power:
+      binaryOperation([](auto a, auto b) { return std::pow(a, b); });
+      break;
+    case Operation::Minus:
+      unaryOperation([](auto a) { return -a; });
       break;
     case Operation::Equal:
       binaryOperation(std::equal_to{});

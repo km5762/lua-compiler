@@ -22,6 +22,9 @@ Value lua_assert(std::span<Value> arguments) {
   const Value &condition{arguments.front()};
 
   if (condition.type == Value::Type::Boolean && !condition.data.boolean) {
+    if (arguments.size() < 2) {
+      exit(EXIT_FAILURE);
+    }
     error(arguments.subspan(1));
   }
 

@@ -61,6 +61,12 @@ BytecodeGenerator::Visitor::operator()(const ast::BinaryOperator &node) {
   case Token::Type::Divide:
     operation = Operation::Divide;
     break;
+  case Token::Type::Modulo:
+    operation = Operation::Modulo;
+    break;
+  case Token::Type::Power:
+    operation = Operation::Power;
+    break;
   case Token::Type::Equal:
     operation = Operation::Equal;
     break;
@@ -85,12 +91,27 @@ BytecodeGenerator::Visitor::operator()(const ast::BinaryOperator &node) {
 
   generator.state().instructionWriter.write(operation, destinationIndex,
                                             leftIndex, rightIndex);
-
   return destinationIndex;
 }
 
 RegisterIndex
-BytecodeGenerator::Visitor::operator()(const ast::UnaryOperator &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::UnaryOperator &node) {
+  const RegisterIndex destinationIndex{generator.state().allocateRegister()};
+  const RegisterIndex operandIndex{std::visit(*this, node.operand->data)};
+
+  Operation operation{};
+  switch (node.operation) {
+  case Token::Type::Minus:
+    operation = Operation::Minus;
+    break;
+  default:
+    std::unreachable();
+  }
+
+  generator.state().instructionWriter.write(operation, destinationIndex,
+                                            operandIndex);
+  return destinationIndex;
+}
 
 RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Return &node) {}
 
@@ -137,6 +158,7 @@ BytecodeGenerator::Visitor::operator()(const ast::FunctionCall &node) {
     const RegisterIndex argumentIndex{firstArgumentIndex + i};
 
     if (resolvedIndex != argumentIndex) {
+      generator.state().allocateRegister();
       generator.state().instructionWriter.write(Operation::Move, argumentIndex,
                                                 resolvedIndex);
     }

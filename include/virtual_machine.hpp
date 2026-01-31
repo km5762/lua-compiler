@@ -67,10 +67,18 @@ private:
         frame().instructionReader.readOperand()};
     const RegisterIndex leftOperand{frame().instructionReader.readOperand()};
     const RegisterIndex rightOperand{frame().instructionReader.readOperand()};
-    Value result{operation(getConstant(leftOperand).data.number,
-                           getConstant(rightOperand).data.number)};
+    Value result{operation(getRegister(leftOperand).data.number,
+                           getRegister(rightOperand).data.number)};
     setRegister(destinationRegisterIndex, result);
   }
+  template <typename Op> void unaryOperation(Op operation) {
+    const RegisterIndex destinationRegisterIndex{
+        frame().instructionReader.readOperand()};
+    const RegisterIndex operand{frame().instructionReader.readOperand()};
+    Value result{operation(getRegister(operand).data.number)};
+    setRegister(destinationRegisterIndex, result);
+  }
+
   void callFunction();
   void move();
 };
