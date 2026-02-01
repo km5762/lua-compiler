@@ -1,10 +1,36 @@
 #pragma once
 
 #include "ast.hpp"
+#include "error.hpp"
 #include "instructions.hpp"
 #include "value.hpp"
 
 #include <memory_resource>
+
+enum class BytecodeGeneratorErrorCode { UnresolvedSymbol };
+class BytecodeGeneratorErrorCategory : public std::error_category {
+  const char *name() const noexcept override { return "parser"; }
+
+  std::string message(int ev) const override {
+    switch (static_cast<BytecodeGeneratorErrorCode>(ev)) {
+    case BytecodeGeneratorErrorCode::UnresolvedSymbol:
+      return "unresolved symbol";
+    default:
+      return "unknown bytecode generator error";
+    }
+  }
+};
+inline const std::error_category &bytecodeGeneratorCategory() {
+  static BytecodeGeneratorErrorCategory instance;
+  return instance;
+}
+inline std::error_code make_error_code(BytecodeGeneratorErrorCode e) noexcept {
+  return {static_cast<int>(e), bytecodeGeneratorCategory()};
+}
+namespace std {
+template <>
+struct is_error_code_enum<BytecodeGeneratorErrorCode> : true_type {};
+} // namespace std
 
 class BytecodeGenerator {
 public:
@@ -15,33 +41,34 @@ public:
 private:
   struct Visitor {
     BytecodeGenerator &generator;
-    RegisterIndex operator()(const std::monostate &node);
-    RegisterIndex operator()(const ast::Block &node);
-    RegisterIndex operator()(const ast::Chunk &node);
-    RegisterIndex operator()(const ast::LocalDeclaration &node);
-    RegisterIndex operator()(const ast::Function &node);
-    RegisterIndex operator()(const ast::Assignment &node);
-    RegisterIndex operator()(const ast::BinaryOperator &node);
-    RegisterIndex operator()(const ast::UnaryOperator &node);
-    RegisterIndex operator()(const ast::Return &node);
-    RegisterIndex operator()(const ast::Break &node);
-    RegisterIndex operator()(const ast::Number &node);
-    RegisterIndex operator()(const ast::Boolean &node);
-    RegisterIndex operator()(const ast::Name &node);
-    RegisterIndex operator()(const ast::Subscript &node);
-    RegisterIndex operator()(const ast::Access &node);
-    RegisterIndex operator()(const ast::FunctionCall &node);
-    RegisterIndex operator()(const ast::WhileLoop &node);
-    RegisterIndex operator()(const ast::RepeatLoop &node);
-    RegisterIndex operator()(const ast::Conditional &node);
-    RegisterIndex operator()(const ast::NumericForLoop &node);
-    RegisterIndex operator()(const ast::GenericForLoop &node);
-    RegisterIndex operator()(const ast::String &node);
+    Result<RegisterIndex> operator()(const std::monostate &node);
+    Result<RegisterIndex> operator()(const ast::Block &node);
+    Result<RegisterIndex> operator()(const ast::Chunk &node);
+    Result<RegisterIndex> operator()(const ast::LocalDeclaration &node);
+    Result<RegisterIndex> operator()(const ast::Function &node);
+    Result<RegisterIndex> operator()(const ast::Assignment &node);
+    Result<RegisterIndex> operator()(const ast::BinaryOperator &node);
+    Result<RegisterIndex> operator()(const ast::UnaryOperator &node);
+    Result<RegisterIndex> operator()(const ast::Return &node);
+    Result<RegisterIndex> operator()(const ast::Break &node);
+    Result<RegisterIndex> operator()(const ast::Number &node);
+    Result<RegisterIndex> operator()(const ast::Boolean &node);
+    Result<RegisterIndex> operator()(const ast::Name &node);
+    Result<RegisterIndex> operator()(const ast::Subscript &node);
+    Result<RegisterIndex> operator()(const ast::Access &node);
+    Result<RegisterIndex> operator()(const ast::FunctionCall &node);
+    Result<RegisterIndex> operator()(const ast::WhileLoop &node);
+    Result<RegisterIndex> operator()(const ast::RepeatLoop &node);
+    Result<RegisterIndex> operator()(const ast::Conditional &node);
+    Result<RegisterIndex> operator()(const ast::NumericForLoop &node);
+    Result<RegisterIndex> operator()(const ast::GenericForLoop &node);
+    Result<RegisterIndex> operator()(const ast::String &node);
   };
 
   struct Symbol {
     RegisterIndex index{};
     bool upvalue{};
+    Symbol *outer{};
   };
   struct TransparentHash {
     using is_transparent = void;

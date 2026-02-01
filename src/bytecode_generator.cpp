@@ -17,10 +17,11 @@ BytecodeGenerator::generate(const ast::Node &node,
   return generator.state().function;
 }
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const std::monostate &node) {}
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Block &node) {
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Block &node) {
   for (const auto &statement : node.statements) {
     std::visit(*this, statement->data);
   }
@@ -28,23 +29,59 @@ RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Block &node) {
   return generator.state().lastRegister();
 }
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Chunk &node) {
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Chunk &node) {
   return std::visit(*this, node.block->data);
 }
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::LocalDeclaration &node) {}
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Function &node) {}
 
-RegisterIndex
-BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {}
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {
+  for (std::size_t i{}; i < node.values.size(); ++i) {
+    Result<RegisterIndex> variableIndex{
+        std::visit(*this, node.variables[i]->data)};
+    const Result<RegisterIndex> valueIndex{
+        std::visit(*this, node.values[i]->data)};
+    if (!valueIndex) {
+      return std::unexpected{valueIndex.error()};
+    }
 
-RegisterIndex
+    if (!variableIndex) {
+      if (variableIndex.error().code !=
+          BytecodeGeneratorErrorCode::UnresolvedSymbol) {
+        return std::unexpected{variableIndex.error()};
+      }
+
+      const auto &name{std::get<ast::Name>(node.variables[i]->data)};
+      const std::pmr::string key{name.name};
+      variableIndex = generator.state().allocateRegister();
+      generator.global().symbolTable.try_emplace(key, Symbol{*variableIndex});
+    }
+
+    generator.state().instructionWriter.write(Operation::Move, *variableIndex,
+                                              *valueIndex);
+  }
+
+  return {};
+}
+
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::BinaryOperator &node) {
-  const RegisterIndex leftIndex{std::visit(*this, node.operands.first->data)};
-  const RegisterIndex rightIndex{std::visit(*this, node.operands.second->data)};
+  const Result<RegisterIndex> leftIndex{
+      std::visit(*this, node.operands.first->data)};
+  if (!leftIndex) {
+    return std::unexpected{leftIndex.error()};
+  }
+  const Result<RegisterIndex> rightIndex{
+      std::visit(*this, node.operands.second->data)};
+  if (!rightIndex) {
+    return std::unexpected{rightIndex.error()};
+  }
   const RegisterIndex destinationIndex{generator.state().allocateRegister()};
 
   Operation operation{};
@@ -90,14 +127,18 @@ BytecodeGenerator::Visitor::operator()(const ast::BinaryOperator &node) {
   };
 
   generator.state().instructionWriter.write(operation, destinationIndex,
-                                            leftIndex, rightIndex);
+                                            *leftIndex, *rightIndex);
   return destinationIndex;
 }
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::UnaryOperator &node) {
   const RegisterIndex destinationIndex{generator.state().allocateRegister()};
-  const RegisterIndex operandIndex{std::visit(*this, node.operand->data)};
+  const Result<RegisterIndex> operandIndex{
+      std::visit(*this, node.operand->data)};
+  if (!operandIndex) {
+    return std::unexpected{operandIndex.error()};
+  }
 
   Operation operation{};
   switch (node.operation) {
@@ -109,15 +150,18 @@ BytecodeGenerator::Visitor::operator()(const ast::UnaryOperator &node) {
   }
 
   generator.state().instructionWriter.write(operation, destinationIndex,
-                                            operandIndex);
+                                            *operandIndex);
   return destinationIndex;
 }
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Return &node) {}
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Return &node) {}
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Break &node) {}
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Break &node) {}
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Number &node) {
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Number &node) {
   const RegisterIndex destinationIndex{generator.state().allocateRegister()};
   generator.state().instructionWriter.write(
       Operation::LoadConstant, destinationIndex,
@@ -126,11 +170,16 @@ RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Number &node) {
   return destinationIndex;
 }
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Boolean &node) {
-}
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Boolean &node) {}
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Name &node) {
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Name &node) {
   const std::optional<Symbol> symbol{generator.resolve(node.name)};
+
+  if (!symbol) {
+    return std::unexpected{Error{BytecodeGeneratorErrorCode::UnresolvedSymbol}};
+  }
 
   if (!symbol->upvalue) {
     return symbol->index;
@@ -142,55 +191,68 @@ RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Name &node) {
   return destinationIndex;
 }
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Subscript &node) {}
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::Access &node) {}
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::Access &node) {}
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::FunctionCall &node) {
-  const RegisterIndex operandIndex{std::visit(*this, node.operand->data)};
+  const Result<RegisterIndex> operandIndex{
+      std::visit(*this, node.operand->data)};
+  if (!operandIndex) {
+    return std::unexpected{operandIndex.error()};
+  }
 
   const RegisterIndex firstArgumentIndex{generator.state().nextRegister()};
   for (std::size_t i{}; i < node.arguments.size(); ++i) {
-    const RegisterIndex resolvedIndex{
+    const Result<RegisterIndex> resolvedIndex{
         std::visit(*this, node.arguments[i]->data)};
+    if (!resolvedIndex) {
+      return std::unexpected{resolvedIndex.error()};
+    }
     const RegisterIndex argumentIndex{firstArgumentIndex + i};
 
     if (resolvedIndex != argumentIndex) {
       generator.state().allocateRegister();
       generator.state().instructionWriter.write(Operation::Move, argumentIndex,
-                                                resolvedIndex);
+                                                *resolvedIndex);
     }
   }
 
   generator.state().instructionWriter.write(Operation::CallFunction,
-                                            operandIndex, firstArgumentIndex,
+                                            *operandIndex, firstArgumentIndex,
                                             node.arguments.size());
 
   return firstArgumentIndex;
 }
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::WhileLoop &node) {}
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::RepeatLoop &node) {}
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Conditional &node) {}
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::NumericForLoop &node) {}
 
-RegisterIndex
+Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::GenericForLoop &node) {}
 
-RegisterIndex BytecodeGenerator::Visitor::operator()(const ast::String &node) {
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::String &node) {
   const RegisterIndex destinationIndex{generator.state().allocateRegister()};
   auto *string{
-      static_cast<StringSize *>(generator.m_compilerAllocator.get().allocate(
+      static_cast<StringSize *>(generator.m_runtimeAllocator.get().allocate(
           sizeof(StringSize) + node.value.size(), alignof(StringSize)))};
+  if (!string) {
+    throw std::bad_alloc{};
+  }
+
   *string = node.value.size();
   std::memcpy(string + 1, node.value.data(), node.value.size());
 
@@ -215,7 +277,7 @@ void BytecodeGenerator::defineNativeFunctions() {
                                      constantIndex);
     global().symbolTable.try_emplace(
         std::pmr::string{name, &m_compilerAllocator.get()},
-        Symbol{registerIndex, false});
+        Symbol{registerIndex});
   };
 }
 
