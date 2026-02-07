@@ -6,7 +6,7 @@
 #include <cstring>
 
 enum class Operation : uint8_t {
-  LoadConstant,
+  GetConstant,
   Add,
   Subtract,
   Multiply,
@@ -21,8 +21,10 @@ enum class Operation : uint8_t {
   GreaterThan,
   GreaterThanOrEqual,
   CallFunction,
-  Move,
-  LoadUpvalue,
+  Copy,
+  GetUpvalue,
+  SetUpvalue,
+  SetNil,
 };
 
 std::string toString(Operation operation);

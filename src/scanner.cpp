@@ -62,6 +62,8 @@ Result<Token> Scanner::advance() {
       return makeToken(Token::Type::False);
     } else if (word == "true") {
       return makeToken(Token::Type::True);
+    } else if (word == "nil") {
+      return makeToken(Token::Type::Nil);
     } else {
       return makeToken(Token::Type::Name);
     }

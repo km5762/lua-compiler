@@ -16,6 +16,7 @@ struct Function;
 
 struct Value {
   enum class Type {
+    Nil,
     Number,
     String,
     Function,
@@ -32,7 +33,7 @@ struct Value {
     bool boolean;
   } data;
 
-  Value() = default;
+  Value() : type{Type::Nil} {};
   Value(double number) : type{Type::Number} { data.number = number; }
   Value(StringSize *string) : type{Type::String} { data.string = string; }
   Value(Function *function) : type{Type::Function} { data.function = function; }
@@ -43,6 +44,8 @@ struct Value {
 
   std::string toString() const {
     switch (type) {
+    case Type::Nil:
+      return "nil";
     case Type::Number:
       return std::to_string(data.number);
     case Type::String: {
@@ -54,7 +57,7 @@ struct Value {
       return "function: " +
              std::to_string(reinterpret_cast<uintptr_t>(data.function));
     case Type::NativeFunction:
-      return "nativeFunction: " +
+      return "native function: " +
              std::to_string(reinterpret_cast<uintptr_t>(data.nativeFunction));
       break;
     case Type::Boolean:

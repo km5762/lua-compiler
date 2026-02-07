@@ -1,5 +1,6 @@
 #include "virtual_machine.hpp"
 #include "instructions.hpp"
+#include <cassert>
 #include <cmath>
 #include <functional>
 #include <utility>
@@ -17,8 +18,8 @@ void VirtualMachine::run() {
     const Operation operation{frame().instructionReader.readOperation()};
 
     switch (operation) {
-    case Operation::LoadConstant:
-      loadConstant();
+    case Operation::GetConstant:
+      getConstant();
       break;
     case Operation::Add:
       binaryOperation(std::plus{});
@@ -62,16 +63,23 @@ void VirtualMachine::run() {
     case Operation::CallFunction:
       callFunction();
       break;
-    case Operation::Move:
-      move();
+    case Operation::Copy:
+      copy();
       break;
-    case Operation::LoadUpvalue:
+    case Operation::GetUpvalue:
+      assert(false);
+      break;
+    case Operation::SetUpvalue:
+      assert(false);
+      break;
+    case Operation::SetNil:
+      setNil();
       break;
     }
   }
 }
 
-void VirtualMachine::loadConstant() {
+void VirtualMachine::getConstant() {
   const RegisterIndex registerIndex{frame().instructionReader.readOperand()};
   const RegisterIndex constantIndex{frame().instructionReader.readOperand()};
   frame().registers[registerIndex] = frame().function->constants[constantIndex];
@@ -96,8 +104,13 @@ void VirtualMachine::callFunction() {
   }
 }
 
-void VirtualMachine::move() {
+void VirtualMachine::copy() {
   const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
   const RegisterIndex sourceIndex{frame().instructionReader.readOperand()};
   setRegister(destinationIndex, getRegister(sourceIndex));
+}
+
+void VirtualMachine::setNil() {
+  const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
+  setRegister(destinationIndex, {});
 }

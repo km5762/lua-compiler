@@ -27,6 +27,7 @@ public:
     String,
     False,
     True,
+    Nil,
     Assign,
     Or,
     And,
@@ -102,6 +103,8 @@ public:
       return "False";
     case Token::Type::True:
       return "True";
+    case Token::Type::Nil:
+      return "Nil";
     case Token::Type::Assign:
       return "Assign";
     case Token::Type::Or:

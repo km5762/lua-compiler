@@ -10,7 +10,7 @@ namespace compilation {
 std::optional<Error> run(std::string_view program) {
   std::pmr::monotonic_buffer_resource compilerAllocator{};
   Scanner scanner{program, compilerAllocator};
-  Result<ast::Node *> result{Parser::parse(scanner, compilerAllocator)};
+  Result<ast::Node<>*> result{Parser::parse(scanner, compilerAllocator)};
   if (!result) {
     return result.error();
   }

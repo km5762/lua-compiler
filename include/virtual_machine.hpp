@@ -61,7 +61,7 @@ private:
         registers, {function.instructions.data()}, &function};
   }
 
-  void loadConstant();
+  void getConstant();
   template <typename Op> void binaryOperation(Op operation) {
     const RegisterIndex destinationRegisterIndex{
         frame().instructionReader.readOperand()};
@@ -80,5 +80,6 @@ private:
   }
 
   void callFunction();
-  void move();
+  void copy();
+  void setNil();
 };

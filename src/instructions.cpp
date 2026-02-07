@@ -12,7 +12,7 @@ inline uint8_t computeOperandSize(RegisterIndex operand) {
 
 std::string toString(Operation operation) {
   switch (operation) {
-  case Operation::LoadConstant:
+  case Operation::GetConstant:
     return "LoadConstant";
   case Operation::Add:
     return "Add";
@@ -24,9 +24,9 @@ std::string toString(Operation operation) {
     return "Divide";
   case Operation::CallFunction:
     return "CallFunction";
-  case Operation::Move:
+  case Operation::Copy:
     return "Move";
-  case Operation::LoadUpvalue:
+  case Operation::GetUpvalue:
     return "LoadUpvalue";
   }
 }

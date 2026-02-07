@@ -57,7 +57,7 @@ int main() {
                          std::istreambuf_iterator<char>()};
 
     Scanner scanner{input, allocator};
-    Result<ast::Node *> result{Parser::parse(scanner, allocator)};
+    Result<ast::Node<> *> result{Parser::parse(scanner, allocator)};
     if (!result) {
       printFailure(entry.path(),
                    std::format("Unhandled parser error: {}\nToken dump:{}\n\n",
@@ -91,7 +91,7 @@ int main() {
     std::string input{(std::istreambuf_iterator<char>(inputFile)),
                       std::istreambuf_iterator<char>()};
     Scanner scanner{input, allocator};
-    Result<ast::Node *> result{Parser::parse(scanner, allocator)};
+    Result<ast::Node<> *> result{Parser::parse(scanner, allocator)};
     if (result) {
       std::string dump{*result ? (*result)->toJson().dump(2) : ""};
       printFailure(entry.path(),

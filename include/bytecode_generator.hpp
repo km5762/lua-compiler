@@ -34,7 +34,7 @@ struct is_error_code_enum<BytecodeGeneratorErrorCode> : true_type {};
 
 class BytecodeGenerator {
 public:
-  static Function generate(const ast::Node &node,
+  static Function generate(const ast::Node<> &node,
                            std::pmr::memory_resource &compilerAllocator,
                            std::pmr::memory_resource &runtimeAllocator);
 
@@ -63,6 +63,7 @@ private:
     Result<RegisterIndex> operator()(const ast::NumericForLoop &node);
     Result<RegisterIndex> operator()(const ast::GenericForLoop &node);
     Result<RegisterIndex> operator()(const ast::String &node);
+    Result<RegisterIndex> operator()(const ast::Nil &node);
   };
 
   struct Symbol {
@@ -106,6 +107,17 @@ private:
   using SymbolTable =
       std::pmr::unordered_map<std::pmr::string, Symbol, TransparentHash,
                               TransparentEqual>;
+
+  struct Resolver {
+    BytecodeGenerator &generator;
+    std::optional<Symbol> operator()(const ast::Name &node);
+    std::optional<Symbol> operator()(const ast::Access &node);
+    std::optional<Symbol> operator()(const ast::Subscript &node);
+    template <typename T> std::optional<Symbol> operator()(const T &) {
+      static_assert(sizeof(T) == 0, "Resolver called on non-lvalue");
+    }
+  };
+
   struct State {
     State *outer{};
     Function function{};
