@@ -6,14 +6,17 @@
 #include "value.hpp"
 #include <utility>
 
-Function
-BytecodeGenerator::generate(const ast::Node<>&node,
+Result<Function>
+BytecodeGenerator::generate(const ast::Node &node,
                             std::pmr::memory_resource &compilerAllocator,
                             std::pmr::memory_resource &runtimeAllocator) {
   BytecodeGenerator generator{compilerAllocator, runtimeAllocator};
   generator.defineNativeFunctions();
   BytecodeGenerator::Visitor visitor{generator};
-  std::visit(visitor, node.data);
+  const Result<RegisterIndex> index{std::visit(visitor, node.data)};
+  if (!index) {
+    return std::unexpected{index.error()};
+  }
 
   return generator.state().function;
 }
@@ -24,7 +27,10 @@ BytecodeGenerator::Visitor::operator()(const std::monostate &node) {}
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Block &node) {
   for (const auto &statement : node.statements) {
-    std::visit(*this, statement->data);
+    const Result<RegisterIndex> index{std::visit(*this, statement->data)};
+    if (!index) {
+      return std::unexpected{index.error()};
+    }
   }
 
   return generator.state().lastRegister();
@@ -63,7 +69,7 @@ BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {
       variableSymbol = localSymbol;
     }
 
-    if (i >= node.variables.size() - 1) {
+    if (i > node.values.size() - 1) {
       const RegisterIndex constantNilIndex{generator.state().addConstant()};
 
       if (variableSymbol->upvalue) {
@@ -291,7 +297,14 @@ BytecodeGenerator::Visitor::operator()(const ast::String &node) {
 }
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::Nil &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::Nil &node) {
+  const RegisterIndex destinationIndex{generator.state().allocateRegister()};
+  generator.state().instructionWriter.write(Operation::GetConstant,
+                                            destinationIndex,
+                                            generator.state().addConstant());
+
+  return destinationIndex;
+}
 
 void BytecodeGenerator::defineNativeFunctions() {
   const std::array nativeFunctions{

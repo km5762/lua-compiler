@@ -29,7 +29,7 @@ int main() {
     std::ofstream expectedFile{expectedFilePath};
     Scanner scanner{input, allocator};
     std::pmr::monotonic_buffer_resource allocator{};
-    Result<ast::Node<>*> result{Parser::parse(scanner, allocator)};
+    Result<ast::Node*> result{Parser::parse(scanner, allocator)};
     if (!result) {
       printFailure(entry.path(), std::format("Unhandled parser error: {}\n",
                                              result.error().message));

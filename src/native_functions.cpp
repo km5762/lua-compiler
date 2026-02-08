@@ -5,7 +5,7 @@
 namespace native {
 Value print(std::span<Value> arguments) {
   for (const Value &argument : arguments) {
-    std::string string{argument.toString()};
+    const auto string{argument.toString()};
     std::cout << string;
     // fwrite(string.data(), 1, string.size(), stdout);
   }

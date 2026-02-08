@@ -6,7 +6,7 @@ endfunction()
 set(LUA_TESTS
   print
   binary_operators
-  foo_bar
+  assignment
 )
 
 foreach(t IN LISTS LUA_TESTS)

@@ -19,7 +19,11 @@ int main(int argc, char *argv[]) {
 
   std::string program{std::istreambuf_iterator<char>{file},
                       std::istreambuf_iterator<char>{}};
-  compilation::run(program);
+  std::optional<Error> error{compilation::run(program)};
+  if (error) {
+    std::cerr << error->message << '\n';
+    return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 }

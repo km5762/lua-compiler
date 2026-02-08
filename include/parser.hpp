@@ -78,7 +78,7 @@ Error makeUnexpectedTokenError(const Token &got, T... expected) {
 }
 
 inline Error makeUnassignableValueError(const Token &token,
-                                        const ast::Node<> *value) {
+                                        const ast::Node *value) {
   return {
       ParserErrorCode::UnassignableValue,
       makeErrorMessage(token, std::format("Cannot assign to value of type '{}'",
@@ -111,15 +111,15 @@ public:
   Parser(Scanner &scanner, std::pmr::memory_resource &allocator)
       : m_scanner{scanner}, m_allocator{allocator} {};
 
-  static Result<ast::Node<> *> parse(Scanner &scanner,
-                                     std::pmr::memory_resource &allocator);
+  static Result<ast::Node *> parse(Scanner &scanner,
+                                   std::pmr::memory_resource &allocator);
 
 private:
   std::reference_wrapper<Scanner> m_scanner;
   std::reference_wrapper<std::pmr::memory_resource> m_allocator;
 
-  ast::Node<> *makeNode(ast::Data &&data);
-  template <typename T = ast::Node<> *>
+  ast::Node *makeNode(ast::Data &&data);
+  template <typename T = ast::Node *>
   ast::List<T> makeList(std::initializer_list<T> values = {}) {
     return ast::List<T>(values, &m_allocator.get());
   }
@@ -157,12 +157,12 @@ private:
 
     return m_scanner.get().advance();
   }
-  template <typename... T> bool assignable(ast::Node<> *node) {
+  template <typename... T> bool assignable(ast::Node *node) {
     return node->is<ast::Access, ast::Subscript, ast::Name>();
   }
 
   template <bool inLoop, typename... T>
-  Result<ast::Node<> *> parseBlock(T... delimiters) {
+  Result<ast::Node *> parseBlock(T... delimiters) {
     ast::List<> statements{makeList()};
 
     while (true) {
@@ -181,7 +181,7 @@ private:
         return std::unexpected{makeMissingClosingDelimiterError(
             *m_scanner.get().peek(), delimiters...)};
       }
-      Result<ast::Node<> *> statement{parseStatement<inLoop>(delimiters...)};
+      Result<ast::Node *> statement{parseStatement<inLoop>(delimiters...)};
       if (!statement) {
         return std::unexpected{statement.error()};
       }
@@ -191,8 +191,8 @@ private:
       }
     }
   }
-  Result<ast::Node<> *> parseChunk();
-  template <typename... T> Result<ast::Node<> *> parseReturn(T... delimiters) {
+  Result<ast::Node *> parseChunk();
+  template <typename... T> Result<ast::Node *> parseReturn(T... delimiters) {
     auto delimiter{check(delimiters...)};
     if (!delimiter) {
       return std::unexpected{delimiter.error()};
@@ -212,7 +212,7 @@ private:
   }
 
   template <bool inLoop, typename... T>
-  Result<ast::Node<> *> parseStatement(T... delimiters) {
+  Result<ast::Node *> parseStatement(T... delimiters) {
     Result<Token> token{m_scanner.get().advance()};
     if (!token) {
       return std::unexpected{token.error()};
@@ -239,7 +239,7 @@ private:
       }
       return makeNode(ast::Break{});
     default:
-      Result<ast::Node<> *> prefix{parsePrefixExpression(*token)};
+      Result<ast::Node *> prefix{parsePrefixExpression(*token)};
       if (!prefix) {
         return std::unexpected{prefix.error()};
       }
@@ -252,7 +252,7 @@ private:
         if (!assignable(*prefix)) {
           return std::unexpected{makeUnassignableValueError(*token, *prefix)};
         }
-        Result<ast::Node<> *> expression{parseExpression()};
+        Result<ast::Node *> expression{parseExpression()};
         if (!expression) {
           return std::unexpected{expression.error()};
         }
@@ -288,8 +288,8 @@ private:
     }
   }
 
-  template <bool inLoop> Result<ast::Node<> *> parseConditional() {
-    Result<ast::Node<> *> condition{parseExpression()};
+  template <bool inLoop> Result<ast::Node *> parseConditional() {
+    Result<ast::Node *> condition{parseExpression()};
     if (!condition) {
       return std::unexpected{condition.error()};
     }
@@ -297,18 +297,18 @@ private:
     if (auto token = consume(Token::Type::Then); !token) {
       return std::unexpected{token.error()};
     }
-    Result<ast::Node<> *> block{parseBlock<inLoop>(
+    Result<ast::Node *> block{parseBlock<inLoop>(
         Token::Type::ElseIf, Token::Type::Else, Token::Type::End)};
     if (!block) {
       return std::unexpected{block.error()};
     }
 
-    Result<ast::Node<> *> conditional{
+    Result<ast::Node *> conditional{
         makeNode(ast::Conditional{*condition, *block})};
     if (!conditional) {
       return std::unexpected{condition.error()};
     }
-    ast::Node<> *current{*conditional};
+    ast::Node *current{*conditional};
     while (true) {
       auto elseif{match(Token::Type::ElseIf)};
       if (!elseif) {
@@ -317,19 +317,19 @@ private:
       if (!*elseif) {
         break;
       }
-      Result<ast::Node<> *> alternateCondition{parseExpression()};
+      Result<ast::Node *> alternateCondition{parseExpression()};
       if (!alternateCondition) {
         return std::unexpected{alternateCondition.error()};
       }
       if (auto token = consume(Token::Type::Then); !token) {
         return std::unexpected{token.error()};
       }
-      Result<ast::Node<> *> alternateBlock{
+      Result<ast::Node *> alternateBlock{
           parseBlock<inLoop>(Token::Type::ElseIf, Token::Type::Else)};
       if (!alternateBlock) {
         return std::unexpected{alternateBlock.error()};
       }
-      Result<ast::Node<> *> alternate{
+      Result<ast::Node *> alternate{
           makeNode(ast::Conditional{*alternateCondition, *alternateBlock})};
       if (!alternate) {
         return std::unexpected{alternate.error()};
@@ -345,8 +345,7 @@ private:
       return std::unexpected{alternate.error()};
     }
     if (*alternate) {
-      Result<ast::Node<> *> alternateBlock{
-          parseBlock<inLoop>(Token::Type::End)};
+      Result<ast::Node *> alternateBlock{parseBlock<inLoop>(Token::Type::End)};
       if (!alternateBlock) {
         return std::unexpected{alternateBlock.error()};
       }
@@ -363,27 +362,27 @@ private:
     return conditional;
   }
 
-  Result<ast::Node<> *> parseWhileLoop();
-  Result<ast::Node<> *> parseRepeatLoop();
-  Result<ast::Node<> *> parseLocalDeclaration();
-  Result<ast::Node<> *> parseForLoop();
-  Result<ast::Node<> *> parseFunctionDeclaration();
-  Result<ast::Node<> *>
+  Result<ast::Node *> parseWhileLoop();
+  Result<ast::Node *> parseRepeatLoop();
+  Result<ast::Node *> parseLocalDeclaration();
+  Result<ast::Node *> parseForLoop();
+  Result<ast::Node *> parseFunctionDeclaration();
+  Result<ast::Node *>
   parseFunction(std::optional<std::string_view> first = std::nullopt);
 
   Result<ast::List<std::string_view>>
   parseParameters(std::optional<std::string_view> first = std::nullopt);
   Result<ast::List<std::string_view>>
   parseNameList(std::optional<std::string_view> first = std::nullopt);
-  Result<ast::List<>> parseVariableList(ast::Node<> *first = nullptr);
-  Result<ast::List<>> parseExpressionList(ast::Node<> *first = nullptr);
-  Result<ast::List<>> parseArguments(ast::Node<> *first = nullptr);
-  Result<ast::Node<> *> parseExpression(int precedence = 0);
+  Result<ast::List<>> parseVariableList(ast::Node *first = nullptr);
+  Result<ast::List<>> parseExpressionList(ast::Node *first = nullptr);
+  Result<ast::List<>> parseArguments(ast::Node *first = nullptr);
+  Result<ast::Node *> parseExpression(int precedence = 0);
 
   int getPrecedence(Token::Type type);
-  Result<ast::Node<> *> parseNud(const Token &token);
-  Result<ast::Node<> *> parseNumber(const Token &token);
-  Result<ast::Node<> *> parsePrefixExpression(const Token &token);
-  Result<ast::Node<> *> parseVariable(const Token &token);
-  Result<ast::Node<> *> parseLed(const Token &token, ast::Node<> *left);
+  Result<ast::Node *> parseNud(const Token &token);
+  Result<ast::Node *> parseNumber(const Token &token);
+  Result<ast::Node *> parsePrefixExpression(const Token &token);
+  Result<ast::Node *> parseVariable(const Token &token);
+  Result<ast::Node *> parseLed(const Token &token, ast::Node *left);
 };

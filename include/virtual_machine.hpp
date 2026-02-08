@@ -4,6 +4,8 @@
 #include "value.hpp"
 
 #include <array>
+#include <format>
+#include <iostream>
 
 class Stack {
 public:
@@ -60,16 +62,29 @@ private:
     m_frames[m_frameIndex] = {
         registers, {function.instructions.data()}, &function};
   }
-
+  template <typename... Args>
+  [[noreturn]] void panic(std::string_view message, Args &&...args) {
+    auto formatted = std::vformat(message, std::make_format_args(args...));
+    std::cerr << formatted << '\n';
+    std::terminate();
+  }
   void getConstant();
   template <typename Op> void binaryOperation(Op operation) {
     const RegisterIndex destinationRegisterIndex{
         frame().instructionReader.readOperand()};
-    const RegisterIndex leftOperand{frame().instructionReader.readOperand()};
-    const RegisterIndex rightOperand{frame().instructionReader.readOperand()};
-    Value result{operation(getRegister(leftOperand).data.number,
-                           getRegister(rightOperand).data.number)};
-    setRegister(destinationRegisterIndex, result);
+    const RegisterIndex leftOperandIndex{
+        frame().instructionReader.readOperand()};
+    const RegisterIndex rightOperandIndex{
+        frame().instructionReader.readOperand()};
+    const Value leftOperand{getRegister(leftOperandIndex)};
+    const Value rightOperand{getRegister(rightOperandIndex)};
+    const std::optional<Value> result{
+        operation(leftOperand.data.number, rightOperand.data.number)};
+    if (!result) {
+      panic("Invalid operands to binary operation: {}, {}", leftOperand,
+            rightOperand);
+    }
+    setRegister(destinationRegisterIndex, *result);
   }
   template <typename Op> void unaryOperation(Op operation) {
     const RegisterIndex destinationRegisterIndex{

@@ -10,14 +10,17 @@ namespace compilation {
 std::optional<Error> run(std::string_view program) {
   std::pmr::monotonic_buffer_resource compilerAllocator{};
   Scanner scanner{program, compilerAllocator};
-  Result<ast::Node<>*> result{Parser::parse(scanner, compilerAllocator)};
+  Result<ast::Node *> result{Parser::parse(scanner, compilerAllocator)};
   if (!result) {
     return result.error();
   }
   std::pmr::monotonic_buffer_resource runtimeAllocator{};
-  Function function{BytecodeGenerator::generate(**result, compilerAllocator,
-                                                runtimeAllocator)};
-  VirtualMachine::run(function);
+  Result<Function> function{BytecodeGenerator::generate(
+      **result, compilerAllocator, runtimeAllocator)};
+  if (!function) {
+    return function.error();
+  }
+  VirtualMachine::run(*function);
 
   return {};
 }

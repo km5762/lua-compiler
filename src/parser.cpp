@@ -9,14 +9,14 @@
 #include "scanner.hpp"
 #include "token.hpp"
 
-Result<ast::Node<> *> Parser::parse(Scanner &scanner,
+Result<ast::Node *> Parser::parse(Scanner &scanner,
                                     std::pmr::memory_resource &allocator) {
   Parser parser{scanner, allocator};
   return parser.parseChunk();
 }
 
-Result<ast::Node<> *> Parser::parseChunk() {
-  Result<ast::Node<> *> block{parseBlock<false>(Token::Type::Eof)};
+Result<ast::Node *> Parser::parseChunk() {
+  Result<ast::Node *> block{parseBlock<false>(Token::Type::Eof)};
   if (!block) {
     return std::unexpected{block.error()};
   }
@@ -63,12 +63,12 @@ int Parser::getPrecedence(Token::Type type) {
   }
 }
 
-Result<ast::Node<> *> Parser::parseExpression(int precedence) {
+Result<ast::Node *> Parser::parseExpression(int precedence) {
   Result<Token> token{m_scanner.get().advance()};
   if (!token) {
     return std::unexpected{token.error()};
   }
-  Result<ast::Node<> *> left{parseNud(*token)};
+  Result<ast::Node *> left{parseNud(*token)};
   if (!left) {
     return std::unexpected{left.error()};
   }
@@ -93,7 +93,7 @@ Result<ast::Node<> *> Parser::parseExpression(int precedence) {
   return left;
 }
 
-Result<ast::Node<> *> Parser::parseNud(const Token &token) {
+Result<ast::Node *> Parser::parseNud(const Token &token) {
   switch (token.type) {
   case Token::Type::False:
     return makeNode(ast::Boolean{false});
@@ -110,7 +110,7 @@ Result<ast::Node<> *> Parser::parseNud(const Token &token) {
   case Token::Type::Minus:
   case Token::Type::Not:
   case Token::Type::Length: {
-    Result<ast::Node<> *> expression{
+    Result<ast::Node *> expression{
         parseExpression(getPrecedence(token.type))};
     if (!expression) {
       return std::unexpected{expression.error()};
@@ -122,8 +122,8 @@ Result<ast::Node<> *> Parser::parseNud(const Token &token) {
   }
 }
 
-Result<ast::Node<> *> Parser::parsePrefixExpression(const Token &token) {
-  Result<ast::Node<> *> left{};
+Result<ast::Node *> Parser::parsePrefixExpression(const Token &token) {
+  Result<ast::Node *> left{};
   switch (token.type) {
   case Token::Type::Name:
     left = makeNode(ast::Name{std::string_view{token.data}});
@@ -153,7 +153,7 @@ Result<ast::Node<> *> Parser::parsePrefixExpression(const Token &token) {
       if (Result<Token> token{m_scanner.get().advance()}; !token) {
         return std::unexpected{token.error()};
       }
-      Result<ast::Node<> *> index{parseExpression(getPrecedence(token->type))};
+      Result<ast::Node *> index{parseExpression(getPrecedence(token->type))};
       if (!index) {
         return std::unexpected{index.error()};
       }
@@ -198,7 +198,7 @@ Result<ast::Node<> *> Parser::parsePrefixExpression(const Token &token) {
       if (Result<Token> token{m_scanner.get().advance()}; !token) {
         return std::unexpected{token.error()};
       }
-      ast::Node<> *self{*left};
+      ast::Node *self{*left};
       Result<Token> member{consume(Token::Type::Name)};
       if (!member) {
         return std::unexpected{member.error()};
@@ -228,8 +228,8 @@ Result<ast::Node<> *> Parser::parsePrefixExpression(const Token &token) {
   return left;
 }
 
-Result<ast::Node<> *> Parser::parseVariable(const Token &token) {
-  Result<ast::Node<> *> prefix{parsePrefixExpression(token)};
+Result<ast::Node *> Parser::parseVariable(const Token &token) {
+  Result<ast::Node *> prefix{parsePrefixExpression(token)};
   if (!prefix) {
     return std::unexpected{prefix.error()};
   }
@@ -239,7 +239,7 @@ Result<ast::Node<> *> Parser::parseVariable(const Token &token) {
   return prefix;
 }
 
-Result<ast::Node<> *> Parser::parseNumber(const Token &token) {
+Result<ast::Node *> Parser::parseNumber(const Token &token) {
   double number{};
   auto [ptr, ec] = std::from_chars(
       token.data.data(), token.data.data() + token.data.size(), number);
@@ -249,7 +249,7 @@ Result<ast::Node<> *> Parser::parseNumber(const Token &token) {
   return makeNode(ast::Number{number});
 }
 
-Result<ast::Node<> *> Parser::parseLed(const Token &token, ast::Node<> *left) {
+Result<ast::Node *> Parser::parseLed(const Token &token, ast::Node *left) {
   switch (token.type) {
   case Token::Type::Or:
   case Token::Type::And:
@@ -264,7 +264,7 @@ Result<ast::Node<> *> Parser::parseLed(const Token &token, ast::Node<> *left) {
   case Token::Type::Times:
   case Token::Type::Divide:
   case Token::Type::Modulo: {
-    Result<ast::Node<> *> right{parseExpression(getPrecedence(token.type))};
+    Result<ast::Node *> right{parseExpression(getPrecedence(token.type))};
     if (!right) {
       return std::unexpected{right.error()};
     }
@@ -272,7 +272,7 @@ Result<ast::Node<> *> Parser::parseLed(const Token &token, ast::Node<> *left) {
   }
   case Token::Type::Power:
   case Token::Type::Concatenate: {
-    Result<ast::Node<> *> right{parseExpression(getPrecedence(token.type) - 1)};
+    Result<ast::Node *> right{parseExpression(getPrecedence(token.type) - 1)};
     if (!right) {
       return std::unexpected{right.error()};
     }
@@ -289,15 +289,15 @@ Result<ast::Node<> *> Parser::parseLed(const Token &token, ast::Node<> *left) {
   }
 }
 
-Result<ast::Node<> *> Parser::parseWhileLoop() {
-  Result<ast::Node<> *> condition{parseExpression()};
+Result<ast::Node *> Parser::parseWhileLoop() {
+  Result<ast::Node *> condition{parseExpression()};
   if (!condition) {
     return std::unexpected{condition.error()};
   }
   if (Result<Token> token{consume(Token::Type::Do)}; !token) {
     return std::unexpected{token.error()};
   }
-  Result<ast::Node<> *> block{parseBlock<true>(Token::Type::End)};
+  Result<ast::Node *> block{parseBlock<true>(Token::Type::End)};
   if (!block) {
     return std::unexpected{block.error()};
   }
@@ -307,22 +307,22 @@ Result<ast::Node<> *> Parser::parseWhileLoop() {
   return makeNode(ast::WhileLoop{*condition, *block});
 }
 
-Result<ast::Node<> *> Parser::parseRepeatLoop() {
-  Result<ast::Node<> *> block{parseBlock<true>(Token::Type::Until)};
+Result<ast::Node *> Parser::parseRepeatLoop() {
+  Result<ast::Node *> block{parseBlock<true>(Token::Type::Until)};
   if (!block) {
     return std::unexpected{block.error()};
   }
   if (Result<Token> token{consume(Token::Type::Until)}; !token) {
     return std::unexpected{token.error()};
   }
-  Result<ast::Node<> *> condition{parseExpression()};
+  Result<ast::Node *> condition{parseExpression()};
   if (!condition) {
     return std::unexpected{condition.error()};
   }
   return makeNode(ast::RepeatLoop{*condition, *block});
 }
 
-Result<ast::Node<> *> Parser::parseLocalDeclaration() {
+Result<ast::Node *> Parser::parseLocalDeclaration() {
   Result<bool> function{match(Token::Type::Function)};
   if (!function) {
     return std::unexpected{function.error()};
@@ -333,7 +333,7 @@ Result<ast::Node<> *> Parser::parseLocalDeclaration() {
       return std::unexpected{token.error()};
     }
     auto names{makeList<std::string_view>({token->data})};
-    Result<ast::Node<> *> function{parseFunction()};
+    Result<ast::Node *> function{parseFunction()};
     if (!function) {
       return std::unexpected{function.error()};
     }
@@ -362,7 +362,7 @@ Result<ast::Node<> *> Parser::parseLocalDeclaration() {
   return makeNode(ast::LocalDeclaration{*nameList, *expressionList});
 }
 
-Result<ast::Node<> *> Parser::parseForLoop() {
+Result<ast::Node *> Parser::parseForLoop() {
   Result<Token> name{consume(Token::Type::Name)};
   if (!name) {
     return std::unexpected{name.error()};
@@ -373,13 +373,13 @@ Result<ast::Node<> *> Parser::parseForLoop() {
     return std::unexpected{assign.error()};
   }
   if (*assign) {
-    Result<ast::Node<> *> value{parseExpression()};
+    Result<ast::Node *> value{parseExpression()};
     if (!value) {
       return std::unexpected{value.error()};
     }
     auto names{makeList<std::string_view>({name->data})};
     ast::List<> values{makeList({*value})};
-    Result<ast::Node<> *> declaration{
+    Result<ast::Node *> declaration{
         makeNode(ast::LocalDeclaration{names, values})};
     if (!declaration) {
       return std::unexpected{declaration.error()};
@@ -388,12 +388,12 @@ Result<ast::Node<> *> Parser::parseForLoop() {
       return std::unexpected{token.error()};
     }
 
-    Result<ast::Node<> *> condition{parseExpression()};
+    Result<ast::Node *> condition{parseExpression()};
     if (!condition) {
       return std::unexpected{condition.error()};
     }
 
-    Result<ast::Node<> *> increment{};
+    Result<ast::Node *> increment{};
     Result<bool> comma{match(Token::Type::Comma)};
     if (!comma) {
       return std::unexpected{comma.error()};
@@ -409,7 +409,7 @@ Result<ast::Node<> *> Parser::parseForLoop() {
       return std::unexpected{token.error()};
     }
 
-    Result<ast::Node<> *> block{parseBlock<true>(Token::Type::End)};
+    Result<ast::Node *> block{parseBlock<true>(Token::Type::End)};
     if (Result<Token> token{consume(Token::Type::End)}; !token) {
       return std::unexpected{token.error()};
     }
@@ -435,7 +435,7 @@ Result<ast::Node<> *> Parser::parseForLoop() {
   if (Result<Token> token{consume(Token::Type::Do)}; !token) {
     return std::unexpected{token.error()};
   }
-  Result<ast::Node<> *> block{parseBlock<true>(Token::Type::End)};
+  Result<ast::Node *> block{parseBlock<true>(Token::Type::End)};
   if (!block) {
     return std::unexpected{block.error()};
   }
@@ -446,12 +446,12 @@ Result<ast::Node<> *> Parser::parseForLoop() {
   return makeNode(ast::GenericForLoop{*names, *values, *block});
 }
 
-Result<ast::Node<> *> Parser::parseFunctionDeclaration() {
+Result<ast::Node *> Parser::parseFunctionDeclaration() {
   Result<Token> token{consume(Token::Type::Name)};
   if (!token) {
     return std::unexpected{token.error()};
   }
-  Result<ast::Node<> *> name{makeNode(ast::Name{token->data})};
+  Result<ast::Node *> name{makeNode(ast::Name{token->data})};
   if (!name) {
     return std::unexpected{name.error()};
   }
@@ -474,7 +474,7 @@ Result<ast::Node<> *> Parser::parseFunctionDeclaration() {
     }
   }
 
-  Result<ast::Node<> *> function{};
+  Result<ast::Node *> function{};
   Result<bool> colon{match(Token::Type::Colon)};
   if (!colon) {
     return std::unexpected{colon.error()};
@@ -503,7 +503,7 @@ Result<ast::Node<> *> Parser::parseFunctionDeclaration() {
   return makeNode(ast::Assignment{variables, values});
 }
 
-Result<ast::Node<> *>
+Result<ast::Node *>
 Parser::parseFunction(std::optional<std::string_view> first) {
   if (Result<Token> token{consume(Token::Type::LeftParenthesis)}; !token) {
     return std::unexpected{token.error()};
@@ -512,7 +512,7 @@ Parser::parseFunction(std::optional<std::string_view> first) {
   if (!parameters) {
     return std::unexpected{parameters.error()};
   }
-  Result<ast::Node<> *> block{parseBlock<false>(Token::Type::End)};
+  Result<ast::Node *> block{parseBlock<false>(Token::Type::End)};
   if (!block) {
     return std::unexpected{block.error()};
   }
@@ -577,7 +577,7 @@ Parser::parseParameters(std::optional<std::string_view> first) {
   return parameters;
 }
 
-Result<ast::List<>> Parser::parseArguments(ast::Node<> *first) {
+Result<ast::List<>> Parser::parseArguments(ast::Node *first) {
   ast::List<> list{makeList()};
   Result<bool> rightParenthesis{match(Token::Type::RightParenthesis)};
   if (!rightParenthesis) {
@@ -601,13 +601,13 @@ Result<ast::List<>> Parser::parseArguments(ast::Node<> *first) {
   return arguments;
 }
 
-Result<ast::List<>> Parser::parseExpressionList(ast::Node<> *first) {
+Result<ast::List<>> Parser::parseExpressionList(ast::Node *first) {
   ast::List<> list{makeList()};
   if (first) {
     list.push_back(first);
   }
 
-  Result<ast::Node<> *> expression{parseExpression()};
+  Result<ast::Node *> expression{parseExpression()};
   if (!expression) {
     return std::unexpected{expression.error()};
   }
@@ -620,7 +620,7 @@ Result<ast::List<>> Parser::parseExpressionList(ast::Node<> *first) {
     if (!*comma) {
       break;
     }
-    Result<ast::Node<> *> expression{parseExpression()};
+    Result<ast::Node *> expression{parseExpression()};
     if (!expression) {
       return std::unexpected{expression.error()};
     }
@@ -629,7 +629,7 @@ Result<ast::List<>> Parser::parseExpressionList(ast::Node<> *first) {
   return list;
 }
 
-Result<ast::List<>> Parser::parseVariableList(ast::Node<> *first) {
+Result<ast::List<>> Parser::parseVariableList(ast::Node *first) {
   ast::List<> list{makeList()};
   if (first) {
     list.push_back(first);
@@ -640,7 +640,7 @@ Result<ast::List<>> Parser::parseVariableList(ast::Node<> *first) {
     return std::unexpected{token.error()};
   }
 
-  Result<ast::Node<> *> variable{parseVariable(*token)};
+  Result<ast::Node *> variable{parseVariable(*token)};
   if (!variable) {
     return std::unexpected{variable.error()};
   }
@@ -659,7 +659,7 @@ Result<ast::List<>> Parser::parseVariableList(ast::Node<> *first) {
       return std::unexpected{token.error()};
     }
 
-    Result<ast::Node<> *> variable{parseVariable(*token)};
+    Result<ast::Node *> variable{parseVariable(*token)};
     if (!variable) {
       return std::unexpected{variable.error()};
     }
@@ -670,12 +670,12 @@ Result<ast::List<>> Parser::parseVariableList(ast::Node<> *first) {
   return list;
 }
 
-ast::Node<> *Parser::makeNode(ast::Data &&data) {
+ast::Node *Parser::makeNode(ast::Data &&data) {
   void *buffer =
-      m_allocator.get().allocate(sizeof(ast::Node<>), alignof(ast::Node<>));
+      m_allocator.get().allocate(sizeof(ast::Node), alignof(ast::Node));
   if (!buffer) {
     throw std::bad_alloc{};
   }
 
-  return new (buffer) ast::Node<>{std::move(data)};
+  return new (buffer) ast::Node{std::move(data)};
 }

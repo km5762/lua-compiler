@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cmath>
 #include <cstdint>
+#include <format>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -42,6 +45,76 @@ struct Value {
   }
   Value(bool boolean) : type{Type::Boolean} { data.boolean = boolean; }
 
+  std::optional<Value> operator==(Value other) const {
+    if (type != other.type) {
+      return false;
+    }
+
+    switch (type) {
+    case Type::Nil:
+      return true;
+    case Type::Number:
+      return data.number == other.data.number;
+    case Type::String:
+      return data.string == other.data.string;
+    case Type::Function:
+      return data.function == other.data.function;
+    case Type::NativeFunction:
+      return data.nativeFunction == other.data.nativeFunction;
+    case Type::Boolean:
+      return data.boolean == other.data.boolean;
+    }
+
+    return std::nullopt;
+  }
+
+  std::optional<Value> operator!=(Value other) const {
+    const std::optional<Value> result{*this == other};
+    if (!result) {
+      return std::nullopt;
+    }
+    return result->data.boolean;
+  }
+
+private:
+  template <typename Op>
+  std::optional<Value> numericBinaryOperation(Value other, Op operation) const {
+    if (type != Type::Number || other.type != Type::Number) {
+      return std::nullopt;
+    }
+
+    return operation(data.number, other.data.number);
+  }
+
+public:
+  std::optional<Value> operator+(Value other) const {
+    return numericBinaryOperation(other, std::plus{});
+  }
+
+  std::optional<Value> operator-(Value other) const {
+    return numericBinaryOperation(other, std::minus{});
+  }
+
+  std::optional<Value> operator*(Value other) const {
+    return numericBinaryOperation(other, std::multiplies{});
+  }
+
+  std::optional<Value> operator/(Value other) const {
+    return numericBinaryOperation(other, std::divides{});
+  }
+
+  std::optional<Value> power(Value other) const {
+    return numericBinaryOperation(other, [](double base, double exponent) {
+      return std::pow(base, exponent);
+    });
+  }
+
+  std::optional<Value> operator%(Value other) const {
+    return numericBinaryOperation(other, [](double left, double right) {
+      return std::fmod(left, right);
+    });
+  }
+
   std::string toString() const {
     switch (type) {
     case Type::Nil:
@@ -64,6 +137,14 @@ struct Value {
       return data.boolean ? "true" : "false";
       break;
     }
+  }
+};
+
+template <> struct std::formatter<Value> {
+  auto parse(std::format_parse_context &context) { return context.begin(); }
+
+  auto format(Value value, std::format_context &context) const {
+    return std::format_to(context.out(), "{}", value.toString());
   }
 };
 

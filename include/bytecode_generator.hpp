@@ -34,9 +34,9 @@ struct is_error_code_enum<BytecodeGeneratorErrorCode> : true_type {};
 
 class BytecodeGenerator {
 public:
-  static Function generate(const ast::Node<> &node,
-                           std::pmr::memory_resource &compilerAllocator,
-                           std::pmr::memory_resource &runtimeAllocator);
+  static Result<Function> generate(const ast::Node &node,
+                                   std::pmr::memory_resource &compilerAllocator,
+                                   std::pmr::memory_resource &runtimeAllocator);
 
 private:
   struct Visitor {
@@ -114,7 +114,8 @@ private:
     std::optional<Symbol> operator()(const ast::Access &node);
     std::optional<Symbol> operator()(const ast::Subscript &node);
     template <typename T> std::optional<Symbol> operator()(const T &) {
-      static_assert(sizeof(T) == 0, "Resolver called on non-lvalue");
+      assert(false && "Resolver called on non-lvalue");
+      std::unreachable();
     }
   };
 
