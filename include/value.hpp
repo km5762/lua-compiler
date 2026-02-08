@@ -73,7 +73,7 @@ struct Value {
     if (!result) {
       return std::nullopt;
     }
-    return result->data.boolean;
+    return !result->data.boolean;
   }
 
 private:
@@ -113,6 +113,22 @@ public:
     return numericBinaryOperation(other, [](double left, double right) {
       return std::fmod(left, right);
     });
+  }
+
+  std::optional<Value> operator<(Value other) const {
+    return numericBinaryOperation(other, std::less{});
+  }
+
+  std::optional<Value> operator<=(Value other) const {
+    return numericBinaryOperation(other, std::less_equal{});
+  }
+
+  std::optional<Value> operator>(Value other) const {
+    return numericBinaryOperation(other, std::greater{});
+  }
+
+  std::optional<Value> operator>=(Value other) const {
+    return numericBinaryOperation(other, std::greater_equal{});
   }
 
   std::string toString() const {

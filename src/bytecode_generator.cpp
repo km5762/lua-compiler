@@ -49,6 +49,20 @@ BytecodeGenerator::Visitor::operator()(const ast::Function &node) {}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {
+  const RegisterIndex firstValueIndex{generator.state().nextRegister()};
+  for (std::size_t i{}; i < node.values.size(); ++i) {
+    Result<RegisterIndex> valueIndex{std::visit(*this, node.values[i]->data)};
+    if (!valueIndex) {
+      return std::unexpected{valueIndex.error()};
+    }
+    if (valueIndex != firstValueIndex + i) {
+      generator.state().allocateRegister();
+      generator.state().instructionWriter.write(
+          Operation::Copy, firstValueIndex + i, *valueIndex);
+      valueIndex = firstValueIndex + i;
+    }
+  }
+
   for (std::size_t i{}; i < node.variables.size(); ++i) {
     std::optional<Symbol> variableSymbol{
         std::visit(Resolver{generator}, node.variables[i]->data)};
@@ -85,19 +99,14 @@ BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {
       continue;
     }
 
-    const Result<RegisterIndex> valueIndex{
-        std::visit(*this, node.values[i]->data)};
-    if (!valueIndex) {
-      return std::unexpected{valueIndex.error()};
-    }
-
     Operation writeOperation{Operation::Copy};
     if (variableSymbol->upvalue) {
       writeOperation = Operation::SetUpvalue;
     }
 
+    const RegisterIndex valueIndex{firstValueIndex + i};
     generator.state().instructionWriter.write(
-        writeOperation, variableSymbol->index, *valueIndex);
+        writeOperation, variableSymbol->index, valueIndex);
   }
 
   return {};

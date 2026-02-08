@@ -78,8 +78,7 @@ private:
         frame().instructionReader.readOperand()};
     const Value leftOperand{getRegister(leftOperandIndex)};
     const Value rightOperand{getRegister(rightOperandIndex)};
-    const std::optional<Value> result{
-        operation(leftOperand.data.number, rightOperand.data.number)};
+    const std::optional<Value> result{operation(leftOperand, rightOperand)};
     if (!result) {
       panic("Invalid operands to binary operation: {}, {}", leftOperand,
             rightOperand);

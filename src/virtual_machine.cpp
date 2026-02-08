@@ -35,10 +35,11 @@ void VirtualMachine::run() {
       binaryOperation(std::divides{});
       break;
     case Operation::Modulo:
-      binaryOperation([](auto a, auto b) { return std::fmod(a, b); });
+      binaryOperation(std::modulus{});
       break;
     case Operation::Power:
-      binaryOperation([](auto a, auto b) { return std::pow(a, b); });
+      binaryOperation(
+          [](Value base, Value exponent) { return base.power(exponent); });
       break;
     case Operation::Minus:
       unaryOperation([](auto a) { return -a; });
