@@ -171,7 +171,7 @@ private:
         return std::unexpected{delimiter.error()};
       }
       if (*delimiter) {
-        return makeNode(ast::Block{statements});
+        return makeNode(ast::Block{std::move(statements)});
       }
       auto eof{check(Token::Type::Eof)};
       if (!eof) {
@@ -208,7 +208,7 @@ private:
     if (!values) {
       return std::unexpected{values.error()};
     }
-    return makeNode(ast::Return{*values});
+    return makeNode(ast::Return{std::move(*values)});
   }
 
   template <bool inLoop, typename... T>
@@ -281,7 +281,8 @@ private:
         if (!values) {
           return std::unexpected{values.error()};
         }
-        prefix = makeNode(ast::Assignment{*variables, *values});
+        prefix = makeNode(
+            ast::Assignment{std::move(*variables), std::move(*values)});
       }
 
       return prefix;
@@ -385,4 +386,5 @@ private:
   Result<ast::Node *> parsePrefixExpression(const Token &token);
   Result<ast::Node *> parseVariable(const Token &token);
   Result<ast::Node *> parseLed(const Token &token, ast::Node *left);
+  Result<ast::Node *> parseTableConstructor();
 };

@@ -64,6 +64,7 @@ private:
     Result<RegisterIndex> operator()(const ast::GenericForLoop &node);
     Result<RegisterIndex> operator()(const ast::String &node);
     Result<RegisterIndex> operator()(const ast::Nil &node);
+    Result<RegisterIndex> operator()(const ast::TableConstructor &node);
   };
 
   struct Symbol {

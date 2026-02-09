@@ -10,7 +10,7 @@
 #include "token.hpp"
 
 Result<ast::Node *> Parser::parse(Scanner &scanner,
-                                    std::pmr::memory_resource &allocator) {
+                                  std::pmr::memory_resource &allocator) {
   Parser parser{scanner, allocator};
   return parser.parseChunk();
 }
@@ -107,11 +107,12 @@ Result<ast::Node *> Parser::parseNud(const Token &token) {
     return makeNode(ast::Nil{});
   case Token::Type::Function:
     return parseFunction();
+  case Token::Type::LeftBrace:
+    return parseTableConstructor();
   case Token::Type::Minus:
   case Token::Type::Not:
   case Token::Type::Length: {
-    Result<ast::Node *> expression{
-        parseExpression(getPrecedence(token.type))};
+    Result<ast::Node *> expression{parseExpression(getPrecedence(token.type))};
     if (!expression) {
       return std::unexpected{expression.error()};
     }
@@ -214,7 +215,7 @@ Result<ast::Node *> Parser::parsePrefixExpression(const Token &token) {
       if (!arguments) {
         return std::unexpected{arguments.error()};
       }
-      left = makeNode(ast::FunctionCall{*left, *arguments});
+      left = makeNode(ast::FunctionCall{*left, std::move(*arguments)});
       if (!left) {
         return std::unexpected{left.error()};
       }
@@ -338,7 +339,7 @@ Result<ast::Node *> Parser::parseLocalDeclaration() {
       return std::unexpected{function.error()};
     }
     ast::List<> values{makeList({*function})};
-    return makeNode(ast::LocalDeclaration{names, values});
+    return makeNode(ast::LocalDeclaration{std::move(names), std::move(values)});
   }
 
   auto nameList{parseNameList()};
@@ -359,7 +360,8 @@ Result<ast::Node *> Parser::parseLocalDeclaration() {
     }
   }
 
-  return makeNode(ast::LocalDeclaration{*nameList, *expressionList});
+  return makeNode(
+      ast::LocalDeclaration{std::move(*nameList), std::move(*expressionList)});
 }
 
 Result<ast::Node *> Parser::parseForLoop() {
@@ -380,7 +382,7 @@ Result<ast::Node *> Parser::parseForLoop() {
     auto names{makeList<std::string_view>({name->data})};
     ast::List<> values{makeList({*value})};
     Result<ast::Node *> declaration{
-        makeNode(ast::LocalDeclaration{names, values})};
+        makeNode(ast::LocalDeclaration{std::move(names), std::move(values)})};
     if (!declaration) {
       return std::unexpected{declaration.error()};
     }
@@ -500,7 +502,7 @@ Result<ast::Node *> Parser::parseFunctionDeclaration() {
   ast::List<> variables{makeList({*name})};
   ast::List<> values{makeList({*function})};
 
-  return makeNode(ast::Assignment{variables, values});
+  return makeNode(ast::Assignment{std::move(variables), std::move(values)});
 }
 
 Result<ast::Node *>
@@ -520,7 +522,7 @@ Parser::parseFunction(std::optional<std::string_view> first) {
     return std::unexpected{token.error()};
   }
 
-  return makeNode(ast::Function{*parameters, *block});
+  return makeNode(ast::Function{std::move(*parameters), *block});
 }
 
 Result<ast::List<std::string_view>>
@@ -678,4 +680,73 @@ ast::Node *Parser::makeNode(ast::Data &&data) {
   }
 
   return new (buffer) ast::Node{std::move(data)};
+}
+
+Result<ast::Node *> Parser::parseTableConstructor() {
+  auto fields{makeList<std::pair<ast::Node *, ast::Node *>>()};
+  double index{};
+
+  while (true) {
+    const Result<bool> rightBrace{match(Token::Type::RightBrace)};
+    if (!rightBrace) {
+      return std::unexpected{rightBrace.error()};
+    }
+
+    if (*rightBrace) {
+      break;
+    }
+
+    const Result<bool> leftBracket{match(Token::Type::LeftBracket)};
+    if (!leftBracket) {
+      return std::unexpected{leftBracket.error()};
+    }
+
+    Result<ast::Node *> field{parseExpression()};
+    if (!field) {
+      return std::unexpected{field.error()};
+    }
+    Result<ast::Node *> value{};
+    if (*leftBracket) {
+      if (const Result<Token> rightBracket{consume(Token::Type::RightBracket)};
+          !rightBracket) {
+        return std::unexpected{rightBracket.error()};
+      }
+
+      if (const Result<Token> assign{consume(Token::Type::Assign)}; !assign) {
+        return std::unexpected{assign.error()};
+      }
+
+      value = parseExpression();
+      if (!value) {
+        return std::unexpected{value.error()};
+      }
+    } else {
+      if ((*field)->is<ast::Name>()) {
+        const Result<bool> assign{match(Token::Type::Assign)};
+        if (!assign) {
+          return std::unexpected{assign.error()};
+        }
+        if (*assign) {
+          value = parseExpression();
+          if (!value) {
+            return std::unexpected{value.error()};
+          }
+        }
+      }
+
+      if (!*value) {
+        value = field;
+        field = makeNode(ast::Number{index++});
+      }
+    }
+    fields.emplace_back(*field, *value);
+
+    if (const Result<bool> token{
+            match(Token::Type::Semicolon, Token::Type::Comma)};
+        !token) {
+      return std::unexpected{token.error()};
+    }
+  }
+
+  return makeNode(ast::TableConstructor{std::move(fields)});
 }

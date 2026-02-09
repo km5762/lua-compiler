@@ -25,6 +25,14 @@ Json toJson(const std::pair<Node *, Node *> &nodes) {
   return json;
 }
 
+Json toJson(const List<std::pair<ast::Node *, ast::Node *>> &pairs) {
+  std::vector<Json> json(pairs.size());
+  for (auto i{0uz}; i < pairs.size(); ++i) {
+    json[i] = toJson(pairs[i]);
+  }
+  return json;
+}
+
 struct Visitor {
   Json &json;
   void operator()(const std::monostate &node) {}
@@ -120,6 +128,9 @@ struct Visitor {
     json[NodeName<String>::value] = {node.value};
   }
   void operator()(const Nil &node) { json[NodeName<Nil>::value] = {}; }
+  void operator()(const TableConstructor &node) {
+    json[NodeName<TableConstructor>::value] = {{"fields", toJson(node.fields)}};
+  }
 };
 } // namespace
 

@@ -315,6 +315,9 @@ BytecodeGenerator::Visitor::operator()(const ast::Nil &node) {
   return destinationIndex;
 }
 
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::TableConstructor &node) {}
+
 void BytecodeGenerator::defineNativeFunctions() {
   const std::array nativeFunctions{
       std::pair<std::string_view, NativeFunction>{"print", native::print},

@@ -1,0 +1,83 @@
+{
+  "Chunk": {
+    "Block": {
+      "statements": [
+        {
+          "LocalDeclaration": {
+            "names": [
+              "a"
+            ],
+            "values": [
+              {
+                "TableConstructor": {
+                  "fields": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "LocalDeclaration": {
+            "names": [
+              "b"
+            ],
+            "values": [
+              {
+                "TableConstructor": {
+                  "fields": [
+                    [
+                      {
+                        "Number": 0.0
+                      },
+                      {
+                        "Number": 1.0
+                      }
+                    ],
+                    [
+                      {
+                        "String": [
+                          "a"
+                        ]
+                      },
+                      {
+                        "Name": "a"
+                      }
+                    ],
+                    [
+                      {
+                        "Number": 1.0
+                      },
+                      {
+                        "String": [
+                          "a"
+                        ]
+                      }
+                    ],
+                    [
+                      {
+                        "Name": "b"
+                      },
+                      {
+                        "String": [
+                          "b"
+                        ]
+                      }
+                    ],
+                    [
+                      {
+                        "Number": 2.0
+                      },
+                      {
+                        "Boolean": false
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
