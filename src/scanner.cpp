@@ -96,6 +96,10 @@ Result<Token> Scanner::advance() {
   case '+':
     return makeToken(Token::Type::Plus);
   case '-':
+    if (peekChar() == '-') {
+      scanComment();
+      return advance();
+    }
     return makeToken(Token::Type::Minus);
   case '*':
     return makeToken(Token::Type::Times);
@@ -253,4 +257,11 @@ Result<std::string_view> Scanner::unescapeString(std::string_view string) {
   }
 
   return unescaped;
+}
+
+void Scanner::scanComment() {
+  advanceChar();
+
+  while (advanceChar() != '\n') {
+  }
 }

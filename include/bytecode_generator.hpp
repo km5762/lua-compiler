@@ -122,20 +122,26 @@ private:
 
   struct State {
     State *outer{};
-    Function function{};
+    Function function;
     InstructionWriter instructionWriter;
     SymbolTable symbolTable{};
 
     State(std::pmr::memory_resource &compilerAllocator,
           std::pmr::memory_resource &runtimeAllocator, State *outer = nullptr)
-        : outer{outer}, function{std::pmr::vector<uint8_t>(&runtimeAllocator),
-                                 std::pmr::vector<Value>(&runtimeAllocator)},
+        : outer{outer}, function{runtimeAllocator},
           instructionWriter(function.instructions),
           symbolTable{&compilerAllocator} {}
 
     template <typename... Args> RegisterIndex addConstant(Args &&...args) {
       function.constants.emplace_back(std::forward<Args>(args)...);
       return function.constants.size() - 1;
+    }
+    RegisterIndex addJump(std::size_t to = 0) {
+      function.jumps.push_back(to);
+      return function.jumps.size() - 1;
+    }
+    void setJump(RegisterIndex index) {
+      function.jumps[index] = function.instructions.size();
     }
 
     RegisterIndex allocateRegister() { return function.registerCount++; }

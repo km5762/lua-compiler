@@ -213,7 +213,14 @@ BytecodeGenerator::Visitor::operator()(const ast::Number &node) {
 }
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::Boolean &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::Boolean &node) {
+  const RegisterIndex destinationIndex{generator.state().allocateRegister()};
+  generator.state().instructionWriter.write(
+      Operation::GetConstant, destinationIndex,
+      generator.state().addConstant(node.value));
+
+  return destinationIndex;
+}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Name &node) {
@@ -277,7 +284,39 @@ Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::RepeatLoop &node) {}
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::Conditional &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::Conditional &node) {
+  const Result<RegisterIndex> conditionIndex{
+      std::visit(*this, node.condition->data)};
+  if (!conditionIndex) {
+    return std::unexpected{conditionIndex.error()};
+  }
+
+  const RegisterIndex jumpToAlternateIndex{generator.state().addJump()};
+  generator.state().instructionWriter.write(
+      Operation::JumpIfFalsy, *conditionIndex, jumpToAlternateIndex);
+
+  const Result<RegisterIndex> blockIndex{std::visit(*this, node.block->data)};
+  if (!blockIndex) {
+    return std::unexpected{blockIndex.error()};
+  }
+
+  if (node.alternate) {
+    const RegisterIndex jumpAfterAlternateIndex{generator.state().addJump()};
+    generator.state().instructionWriter.write(Operation::Jump,
+                                              jumpAfterAlternateIndex);
+    generator.state().setJump(jumpToAlternateIndex);
+    const Result<RegisterIndex> alternateIndex{
+        std::visit(*this, node.alternate->data)};
+    if (!alternateIndex) {
+      return std::unexpected{alternateIndex.error()};
+    }
+    generator.state().setJump(jumpAfterAlternateIndex);
+  } else {
+    generator.state().setJump(jumpToAlternateIndex);
+  }
+
+  return {};
+}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::NumericForLoop &node) {}

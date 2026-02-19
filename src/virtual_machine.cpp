@@ -77,6 +77,12 @@ void VirtualMachine::run() {
     case Operation::SetNil:
       setNil();
       break;
+    case Operation::JumpIfFalsy:
+      jumpIfFalsy();
+      break;
+    case Operation::Jump:
+      jump();
+      break;
     }
   }
 }
@@ -115,4 +121,21 @@ void VirtualMachine::copy() {
 void VirtualMachine::setNil() {
   const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
   setRegister(destinationIndex, {});
+}
+
+void VirtualMachine::jumpIfFalsy() {
+  const RegisterIndex conditionIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex jumpIndex{frame().instructionReader.readOperand()};
+
+  const Value condition{getRegister(conditionIndex)};
+  if (!condition) {
+    const std::size_t jump{frame().function->jumps[jumpIndex]};
+    frame().instructionReader.cursor = &frame().function->instructions[jump];
+  }
+}
+
+void VirtualMachine::jump() {
+  const RegisterIndex jumpIndex{frame().instructionReader.readOperand()};
+  const std::size_t jump{frame().function->jumps[jumpIndex]};
+  frame().instructionReader.cursor = &frame().function->instructions[jump];
 }

@@ -4,9 +4,9 @@ function(add_lua_test testname)
 endfunction()
 
 set(LUA_TESTS
-  print
   binary_operators
   assignment
+  conditionals
 )
 
 foreach(t IN LISTS LUA_TESTS)

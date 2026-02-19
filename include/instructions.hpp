@@ -25,6 +25,8 @@ enum class Operation : uint8_t {
   GetUpvalue,
   SetUpvalue,
   SetNil,
+  JumpIfFalsy,
+  Jump,
 };
 
 std::string toString(Operation operation);

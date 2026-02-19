@@ -81,6 +81,7 @@ private:
   std::string_view scanWord();
   Result<Token> scanNumber();
   Result<Token> scanString();
+  void scanComment();
   Result<Token> makeToken(Token::Type type) {
     std::size_t size{m_cursor - m_startCursor};
     char *string{

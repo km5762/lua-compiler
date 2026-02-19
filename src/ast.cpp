@@ -109,8 +109,11 @@ struct Visitor {
   void operator()(const Conditional &node) {
     json[NodeName<Conditional>::value] = {
         {"condition", node.condition->toJson()},
-        {"block", node.block->toJson()},
-        {"alternate", node.alternate->toJson()}};
+        {"block", node.block->toJson()}};
+    if (node.alternate) {
+      json[NodeName<Conditional>::value]["alternate"] = {
+          node.alternate->toJson()};
+    }
   }
   void operator()(const NumericForLoop &node) {
     json[NodeName<NumericForLoop>::value] = {

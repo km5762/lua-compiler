@@ -45,6 +45,10 @@ struct Value {
   }
   Value(bool boolean) : type{Type::Boolean} { data.boolean = boolean; }
 
+  explicit operator bool() const {
+    return !(type == Type::Nil || (type == Type::Boolean && !data.boolean));
+  }
+
   std::optional<Value> operator==(Value other) const {
     if (type != other.type) {
       return false;
@@ -173,5 +177,10 @@ struct Function {
   std::pmr::vector<uint8_t> instructions{};
   std::pmr::vector<Value> constants{};
   std::pmr::vector<Upvalue> upvalues{};
+  std::pmr::vector<std::size_t> jumps{};
   RegisterIndex registerCount{};
+
+  Function(std::pmr::memory_resource &allocator)
+      : instructions(&allocator), constants(&allocator), upvalues(&allocator),
+        jumps(&allocator) {}
 };

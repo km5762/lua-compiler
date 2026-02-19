@@ -14,7 +14,7 @@ public:
     if (m_stackIndex > m_stack.size()) {
       m_stack.resize(m_stackIndex);
     }
-    return &m_stack[m_stack.size() - size];
+    return &m_stack[m_stackIndex - size];
   }
 
   void free(std::size_t size) { m_stackIndex -= size; }
@@ -96,4 +96,6 @@ private:
   void callFunction();
   void copy();
   void setNil();
+  void jumpIfFalsy();
+  void jump();
 };
