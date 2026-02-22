@@ -76,14 +76,22 @@ private:
         frame().instructionReader.readOperand()};
     const RegisterIndex rightOperandIndex{
         frame().instructionReader.readOperand()};
+
     const Value leftOperand{getRegister(leftOperandIndex)};
     const Value rightOperand{getRegister(rightOperandIndex)};
-    const std::optional<Value> result{operation(leftOperand, rightOperand)};
-    if (!result) {
-      panic("Invalid operands to binary operation: {}, {}", leftOperand,
-            rightOperand);
+
+    using Result = std::invoke_result_t<Op, Value, Value>;
+    if constexpr (std::is_same_v<Result, std::optional<Value>>) {
+      auto result = operation(leftOperand, rightOperand);
+      if (!result) {
+        panic("Invalid operands to binary operation: {}, {}", leftOperand,
+              rightOperand);
+      }
+      setRegister(destinationRegisterIndex, *result);
+    } else {
+      setRegister(destinationRegisterIndex,
+                  operation(leftOperand, rightOperand));
     }
-    setRegister(destinationRegisterIndex, *result);
   }
   template <typename Op> void unaryOperation(Op operation) {
     const RegisterIndex destinationRegisterIndex{
@@ -98,4 +106,8 @@ private:
   void setNil();
   void jumpIfFalsy();
   void jump();
+  void newTable();
+  void setTable();
+  void setList();
+  void getTable();
 };

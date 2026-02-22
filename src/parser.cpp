@@ -684,7 +684,7 @@ ast::Node *Parser::makeNode(ast::Data &&data) {
 
 Result<ast::Node *> Parser::parseTableConstructor() {
   auto fields{makeList<std::pair<ast::Node *, ast::Node *>>()};
-  double index{};
+  double index{1};
 
   while (true) {
     const Result<bool> rightBrace{match(Token::Type::RightBrace)};

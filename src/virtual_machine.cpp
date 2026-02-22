@@ -1,5 +1,7 @@
 #include "virtual_machine.hpp"
+#include "bytecode_generator.hpp"
 #include "instructions.hpp"
+#include "value.hpp"
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -83,6 +85,18 @@ void VirtualMachine::run() {
     case Operation::Jump:
       jump();
       break;
+    case Operation::NewTable:
+      newTable();
+      break;
+    case Operation::SetTable:
+      setTable();
+      break;
+    case Operation::SetList:
+      setList();
+      break;
+    case Operation::GetTable:
+      getTable();
+      break;
     }
   }
 }
@@ -138,4 +152,52 @@ void VirtualMachine::jump() {
   const RegisterIndex jumpIndex{frame().instructionReader.readOperand()};
   const std::size_t jump{frame().function->jumps[jumpIndex]};
   frame().instructionReader.cursor = &frame().function->instructions[jump];
+}
+
+void VirtualMachine::newTable() {
+  const RegisterIndex tableIndex{frame().instructionReader.readOperand()};
+  // TODO: Implement GC so this doesn't leak
+  setRegister(tableIndex, new Table{});
+}
+
+void VirtualMachine::setTable() {
+  const RegisterIndex tableIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex fieldIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex valueIndex{frame().instructionReader.readOperand()};
+
+  Value table{getRegister(tableIndex)};
+  assert(table.type == Value::Type::Table);
+  assert(table.data.table);
+  const Value field{getRegister(fieldIndex)};
+  const Value value{getRegister(valueIndex)};
+
+  table.data.table->set(field, value);
+}
+
+void VirtualMachine::setList() {
+  const RegisterIndex tableIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex firstValueIndex{frame().instructionReader.readOperand()};
+  const std::size_t size{frame().instructionReader.readOperand()};
+
+  Value table{getRegister(tableIndex)};
+  assert(table.type == Value::Type::Table);
+  assert(table.data.table);
+
+  for (std::size_t i{}; i < size; ++i) {
+    const Value value{getRegister(firstValueIndex + i)};
+    table.data.table->set(static_cast<double>(i), value);
+  }
+}
+
+void VirtualMachine::getTable() {
+  const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex tableIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex fieldIndex{frame().instructionReader.readOperand()};
+
+  Value table{getRegister(tableIndex)};
+  assert(table.type == Value::Type::Table);
+  assert(table.data.table);
+
+  Value value{table.data.table->get(getRegister(fieldIndex))};
+  setRegister(destinationIndex, value);
 }

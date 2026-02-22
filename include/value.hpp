@@ -6,6 +6,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct Value;
@@ -16,6 +17,7 @@ using StringSize = std::size_t;
 using NativeFunction = Value (*)(std::span<Value> arguments);
 
 struct Function;
+struct Table;
 
 struct Value {
   enum class Type {
@@ -25,6 +27,7 @@ struct Value {
     Function,
     NativeFunction,
     Boolean,
+    Table,
   };
 
   Type type{};
@@ -34,6 +37,7 @@ struct Value {
     Function *function;
     NativeFunction nativeFunction;
     bool boolean;
+    Table *table;
   } data;
 
   Value() : type{Type::Nil} {};
@@ -44,41 +48,14 @@ struct Value {
     data.nativeFunction = nativeFunction;
   }
   Value(bool boolean) : type{Type::Boolean} { data.boolean = boolean; }
+  Value(Table *table) : type{Type::Table} { data.table = table; }
 
   explicit operator bool() const {
     return !(type == Type::Nil || (type == Type::Boolean && !data.boolean));
   }
 
-  std::optional<Value> operator==(Value other) const {
-    if (type != other.type) {
-      return false;
-    }
-
-    switch (type) {
-    case Type::Nil:
-      return true;
-    case Type::Number:
-      return data.number == other.data.number;
-    case Type::String:
-      return data.string == other.data.string;
-    case Type::Function:
-      return data.function == other.data.function;
-    case Type::NativeFunction:
-      return data.nativeFunction == other.data.nativeFunction;
-    case Type::Boolean:
-      return data.boolean == other.data.boolean;
-    }
-
-    return std::nullopt;
-  }
-
-  std::optional<Value> operator!=(Value other) const {
-    const std::optional<Value> result{*this == other};
-    if (!result) {
-      return std::nullopt;
-    }
-    return !result->data.boolean;
-  }
+  Value operator==(Value other) const;
+  Value operator!=(Value other) const;
 
 private:
   template <typename Op>
@@ -135,30 +112,16 @@ public:
     return numericBinaryOperation(other, std::greater_equal{});
   }
 
-  std::string toString() const {
-    switch (type) {
-    case Type::Nil:
-      return "nil";
-    case Type::Number:
-      return std::to_string(data.number);
-    case Type::String: {
-      const StringSize length{*data.string};
-      const char *string{reinterpret_cast<const char *>(data.string + 1)};
-      return std::string{string, length};
-    }
-    case Type::Function:
-      return "function: " +
-             std::to_string(reinterpret_cast<uintptr_t>(data.function));
-    case Type::NativeFunction:
-      return "native function: " +
-             std::to_string(reinterpret_cast<uintptr_t>(data.nativeFunction));
-      break;
-    case Type::Boolean:
-      return data.boolean ? "true" : "false";
-      break;
-    }
-  }
+  std::string toString() const;
+  std::optional<std::string_view> toStringView() const;
+  std::size_t hash() const;
 };
+
+namespace std {
+template <> struct hash<Value> {
+  size_t operator()(const Value &value) const noexcept { return value.hash(); }
+};
+} // namespace std
 
 template <> struct std::formatter<Value> {
   auto parse(std::format_parse_context &context) { return context.begin(); }
@@ -183,4 +146,20 @@ struct Function {
   Function(std::pmr::memory_resource &allocator)
       : instructions(&allocator), constants(&allocator), upvalues(&allocator),
         jumps(&allocator) {}
+};
+
+struct ValueComparator {
+  bool operator()(const Value &left, const Value &right) const noexcept {
+    const Value result(left == right);
+    return result.data.boolean;
+  }
+};
+
+class Table {
+public:
+  Value &get(Value field) { return m_map[field]; }
+  void set(Value field, Value value) { m_map[field] = value; }
+
+private:
+  std::unordered_map<Value, Value, std::hash<Value>, ValueComparator> m_map{};
 };

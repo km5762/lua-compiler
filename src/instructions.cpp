@@ -54,6 +54,14 @@ std::string toString(Operation operation) {
     return "JumpIfFalsy";
   case Operation::Jump:
     return "Jump";
+  case Operation::NewTable:
+    return "NewTable";
+  case Operation::SetTable:
+    return "SetTable";
+  case Operation::SetList:
+    return "SetList";
+  case Operation::GetTable:
+    return "GetTable";
   }
 }
 

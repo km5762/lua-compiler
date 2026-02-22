@@ -27,6 +27,10 @@ enum class Operation : uint8_t {
   SetNil,
   JumpIfFalsy,
   Jump,
+  NewTable,
+  SetTable,
+  SetList,
+  GetTable,
 };
 
 std::string toString(Operation operation);

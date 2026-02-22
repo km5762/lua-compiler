@@ -7,6 +7,7 @@ set(LUA_TESTS
   binary_operators
   assignment
   conditionals
+  tables
 )
 
 foreach(t IN LISTS LUA_TESTS)

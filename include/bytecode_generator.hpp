@@ -9,7 +9,7 @@
 
 enum class BytecodeGeneratorErrorCode { UnresolvedSymbol };
 class BytecodeGeneratorErrorCategory : public std::error_category {
-  const char *name() const noexcept override { return "parser"; }
+  const char *name() const noexcept override { return "bytecode generator"; }
 
   std::string message(int ev) const override {
     switch (static_cast<BytecodeGeneratorErrorCode>(ev)) {
@@ -65,6 +65,9 @@ private:
     Result<RegisterIndex> operator()(const ast::String &node);
     Result<RegisterIndex> operator()(const ast::Nil &node);
     Result<RegisterIndex> operator()(const ast::TableConstructor &node);
+
+  private:
+    RegisterIndex allocateString(std::string_view stringView);
   };
 
   struct Symbol {
