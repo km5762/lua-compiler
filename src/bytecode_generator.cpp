@@ -208,7 +208,15 @@ Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Return &node) {}
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::Break &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::Break &node) {
+  assert(!generator.state().breakJumps.empty());
+
+  const RegisterIndex breakJumpIndex{generator.state().breakJumps.back()};
+  generator.state().breakJumps.pop_back();
+
+  generator.state().instructionWriter.write(Operation::Jump, breakJumpIndex);
+  return {};
+}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Number &node) {
@@ -316,7 +324,30 @@ BytecodeGenerator::Visitor::operator()(const ast::FunctionCall &node) {
 }
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::WhileLoop &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::WhileLoop &node) {
+  const RegisterIndex jumpToConditionIndex{generator.state().addJump()};
+  const Result<RegisterIndex> conditionIndex{
+      std::visit(*this, node.condition->data)};
+  if (!conditionIndex) {
+    return std::unexpected{conditionIndex.error()};
+  }
+
+  const RegisterIndex jumpAfterLoopIndex{generator.state().addJump()};
+  generator.state().breakJumps.push_back(jumpAfterLoopIndex);
+  generator.state().instructionWriter.write(
+      Operation::JumpIfFalsy, *conditionIndex, jumpAfterLoopIndex);
+
+  const Result<RegisterIndex> blockIndex{std::visit(*this, node.block->data)};
+  if (!blockIndex) {
+    return std::unexpected{blockIndex.error()};
+  }
+
+  generator.state().instructionWriter.write(Operation::Jump,
+                                            jumpToConditionIndex);
+  generator.state().setJump(jumpAfterLoopIndex);
+
+  return {};
+}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::RepeatLoop &node) {}

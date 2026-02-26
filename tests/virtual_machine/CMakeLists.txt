@@ -8,6 +8,7 @@ set(LUA_TESTS
   assignment
   conditionals
   tables
+  loops
 )
 
 foreach(t IN LISTS LUA_TESTS)

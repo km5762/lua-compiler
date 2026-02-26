@@ -128,19 +128,20 @@ private:
     Function function;
     InstructionWriter instructionWriter;
     SymbolTable symbolTable{};
+    std::pmr::vector<RegisterIndex> breakJumps{};
 
     State(std::pmr::memory_resource &compilerAllocator,
           std::pmr::memory_resource &runtimeAllocator, State *outer = nullptr)
         : outer{outer}, function{runtimeAllocator},
           instructionWriter(function.instructions),
-          symbolTable{&compilerAllocator} {}
+          symbolTable{&compilerAllocator}, breakJumps{&compilerAllocator} {}
 
     template <typename... Args> RegisterIndex addConstant(Args &&...args) {
       function.constants.emplace_back(std::forward<Args>(args)...);
       return function.constants.size() - 1;
     }
-    RegisterIndex addJump(std::size_t to = 0) {
-      function.jumps.push_back(to);
+    RegisterIndex addJump() {
+      function.jumps.push_back(function.instructions.size());
       return function.jumps.size() - 1;
     }
     void setJump(RegisterIndex index) {

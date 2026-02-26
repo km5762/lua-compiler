@@ -62,6 +62,8 @@ std::string toString(Operation operation) {
     return "SetList";
   case Operation::GetTable:
     return "GetTable";
+  default:
+    return "Unknown";
   }
 }
 
