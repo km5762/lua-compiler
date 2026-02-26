@@ -350,7 +350,28 @@ BytecodeGenerator::Visitor::operator()(const ast::WhileLoop &node) {
 }
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::RepeatLoop &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::RepeatLoop &node) {
+  const RegisterIndex jumpToBodyIndex{generator.state().addJump()};
+  const RegisterIndex jumpAfterLoopIndex{generator.state().addJump()};
+
+  generator.state().breakJumps.push_back(jumpAfterLoopIndex);
+  const Result<RegisterIndex> blockIndex{std::visit(*this, node.block->data)};
+  if (!blockIndex) {
+    return std::unexpected{blockIndex.error()};
+  }
+
+  const Result<RegisterIndex> conditionIndex{
+      std::visit(*this, node.condition->data)};
+  if (!conditionIndex) {
+    return std::unexpected{conditionIndex.error()};
+  }
+
+  generator.state().instructionWriter.write(Operation::JumpIfFalsy,
+                                            *conditionIndex, jumpToBodyIndex);
+  generator.state().setJump(jumpAfterLoopIndex);
+
+  return {};
+}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Conditional &node) {
