@@ -5,12 +5,19 @@
 #include "overloads.hpp"
 #include "token.hpp"
 #include "value.hpp"
+#include <type_traits>
 #include <utility>
 
 namespace {
 Error makeUnresolvedSymbolError(std::string_view name) {
   return {BytecodeGeneratorErrorCode::UnresolvedSymbol,
           std::format("Unresolved symbol: {}", name)};
+}
+
+Error makeAssignToImmutableError() {
+  // TODO: Add a way of threading the variable name through to here
+  return {BytecodeGeneratorErrorCode::AssignToImmutable,
+          std::format("Attempt to asssign to immutable variable")};
 }
 } // namespace
 
@@ -50,7 +57,40 @@ BytecodeGenerator::Visitor::operator()(const ast::Chunk &node) {
 }
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::LocalDeclaration &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::LocalDeclaration &node) {
+  const RegisterIndex firstValueIndex{generator.state().nextRegister()};
+  for (std::size_t i{}; i < node.values.size(); ++i) {
+    Result<RegisterIndex> valueIndex{std::visit(*this, node.values[i]->data)};
+    if (!valueIndex) {
+      return std::unexpected{valueIndex.error()};
+    }
+    if (valueIndex != firstValueIndex + i) {
+      generator.state().allocateRegister();
+      generator.state().instructionWriter.write(
+          Operation::Copy, firstValueIndex + i, *valueIndex);
+      valueIndex = firstValueIndex + i;
+    }
+  }
+
+  const RegisterIndex firstVariableIndex{generator.state().nextRegister()};
+  for (std::size_t i{}; i < node.names.size(); ++i) {
+    const std::pmr::string key{node.names[i]};
+    const RegisterIndex localIndex{generator.global().allocateRegister()};
+    generator.define(key, Symbol{localIndex});
+
+    if (i > node.values.size() - 1) {
+      const RegisterIndex constantNilIndex{generator.state().addConstant()};
+      generator.state().instructionWriter.write(Operation::SetNil, localIndex);
+      continue;
+    }
+
+    const RegisterIndex valueIndex{firstValueIndex + i};
+    generator.state().instructionWriter.write(Operation::Copy, localIndex,
+                                              valueIndex);
+  }
+
+  return firstVariableIndex;
+}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Function &node) {}
@@ -91,10 +131,16 @@ BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {
       variableSymbol = localSymbol;
     }
 
+    if (variableSymbol->flags & Symbol::immutable) {
+      // NOTE: For some reason in this language this is not a compiler error and
+      // will just silently fail.
+      continue;
+    }
+
     if (i > node.values.size() - 1) {
       const RegisterIndex constantNilIndex{generator.state().addConstant()};
 
-      if (variableSymbol->upvalue) {
+      if (variableSymbol->flags & Symbol::upvalue) {
         const RegisterIndex localNilIndex{generator.state().allocateRegister()};
         generator.state().instructionWriter.write(Operation::SetNil,
                                                   localNilIndex);
@@ -108,7 +154,7 @@ BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {
     }
 
     Operation writeOperation{Operation::Copy};
-    if (variableSymbol->upvalue) {
+    if (variableSymbol->flags & Symbol::upvalue) {
       writeOperation = Operation::SetUpvalue;
     }
 
@@ -211,7 +257,7 @@ Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Break &node) {
   assert(!generator.state().breakJumps.empty());
 
-  const RegisterIndex breakJumpIndex{generator.state().breakJumps.back()};
+  const JumpIndex breakJumpIndex{generator.state().breakJumps.back()};
   generator.state().breakJumps.pop_back();
 
   generator.state().instructionWriter.write(Operation::Jump, breakJumpIndex);
@@ -246,7 +292,7 @@ BytecodeGenerator::Visitor::operator()(const ast::Name &node) {
     return std::unexpected{makeUnresolvedSymbolError(node.name)};
   }
 
-  if (!symbol->upvalue) {
+  if (!(symbol->flags & Symbol::upvalue)) {
     return symbol->index;
   }
 
@@ -325,14 +371,14 @@ BytecodeGenerator::Visitor::operator()(const ast::FunctionCall &node) {
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::WhileLoop &node) {
-  const RegisterIndex jumpToConditionIndex{generator.state().addJump()};
+  const JumpIndex jumpToConditionIndex{generator.state().addJump()};
   const Result<RegisterIndex> conditionIndex{
       std::visit(*this, node.condition->data)};
   if (!conditionIndex) {
     return std::unexpected{conditionIndex.error()};
   }
 
-  const RegisterIndex jumpAfterLoopIndex{generator.state().addJump()};
+  const JumpIndex jumpAfterLoopIndex{generator.state().addJump()};
   generator.state().breakJumps.push_back(jumpAfterLoopIndex);
   generator.state().instructionWriter.write(
       Operation::JumpIfFalsy, *conditionIndex, jumpAfterLoopIndex);
@@ -351,8 +397,8 @@ BytecodeGenerator::Visitor::operator()(const ast::WhileLoop &node) {
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::RepeatLoop &node) {
-  const RegisterIndex jumpToBodyIndex{generator.state().addJump()};
-  const RegisterIndex jumpAfterLoopIndex{generator.state().addJump()};
+  const JumpIndex jumpToBodyIndex{generator.state().addJump()};
+  const JumpIndex jumpAfterLoopIndex{generator.state().addJump()};
 
   generator.state().breakJumps.push_back(jumpAfterLoopIndex);
   const Result<RegisterIndex> blockIndex{std::visit(*this, node.block->data)};
@@ -381,7 +427,7 @@ BytecodeGenerator::Visitor::operator()(const ast::Conditional &node) {
     return std::unexpected{conditionIndex.error()};
   }
 
-  const RegisterIndex jumpToAlternateIndex{generator.state().addJump()};
+  const JumpIndex jumpToAlternateIndex{generator.state().addJump()};
   generator.state().instructionWriter.write(
       Operation::JumpIfFalsy, *conditionIndex, jumpToAlternateIndex);
 
@@ -391,7 +437,7 @@ BytecodeGenerator::Visitor::operator()(const ast::Conditional &node) {
   }
 
   if (node.alternate) {
-    const RegisterIndex jumpAfterAlternateIndex{generator.state().addJump()};
+    const JumpIndex jumpAfterAlternateIndex{generator.state().addJump()};
     generator.state().instructionWriter.write(Operation::Jump,
                                               jumpAfterAlternateIndex);
     generator.state().setJump(jumpToAlternateIndex);
@@ -409,7 +455,47 @@ BytecodeGenerator::Visitor::operator()(const ast::Conditional &node) {
 }
 
 Result<RegisterIndex>
-BytecodeGenerator::Visitor::operator()(const ast::NumericForLoop &node) {}
+BytecodeGenerator::Visitor::operator()(const ast::NumericForLoop &node) {
+  const RegisterIndex firstOperandIndex{generator.state().nextRegister()};
+  const Result<RegisterIndex> startIndex{std::visit(*this, node.start->data)};
+  if (!startIndex) {
+    return std::unexpected{startIndex.error()};
+  }
+  generator.state().copy(firstOperandIndex, *startIndex);
+  const Result<RegisterIndex> endIndex{std::visit(*this, node.end->data)};
+  if (!endIndex) {
+    return std::unexpected{endIndex.error()};
+  }
+  generator.state().copy(firstOperandIndex + 1, *endIndex);
+  Result<RegisterIndex> incrementIndex{};
+  if (!node.increment) {
+    const RegisterIndex constantIndex{generator.state().addConstant(1.0)};
+    incrementIndex = generator.state().allocateRegister();
+    generator.state().instructionWriter.write(Operation::GetConstant,
+                                              *incrementIndex, constantIndex);
+  } else {
+    incrementIndex = std::visit(*this, node.increment->data);
+    if (!incrementIndex) {
+      return std::unexpected{incrementIndex.error()};
+    }
+  }
+  generator.state().copy(firstOperandIndex + 2, *incrementIndex);
+
+  const JumpIndex jumpAfterLoopIndex{generator.state().addJump()};
+  generator.state().instructionWriter.write(
+      Operation::NumericForLoop, firstOperandIndex, jumpAfterLoopIndex);
+
+  generator.define(node.variable, {firstOperandIndex, Symbol::immutable});
+  generator.state().breakJumps.push_back(jumpAfterLoopIndex);
+  const Result<RegisterIndex> blockIndex{std::visit(*this, node.block->data)};
+  if (!blockIndex) {
+    return std::unexpected{blockIndex.error()};
+  }
+  generator.state().setJump(jumpAfterLoopIndex);
+  generator.undefine(node.variable);
+
+  return {};
+}
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::GenericForLoop &node) {}
@@ -536,12 +622,12 @@ BytecodeGenerator::resolve(std::string_view name) {
   std::pmr::string key{name, &m_compilerAllocator.get()};
   while (currentOuter) {
     current->symbolTable.insert_or_assign(
-        key, Symbol{current->function.upvalues.size(), true});
+        key, Symbol{current->function.upvalues.size(), Symbol::upvalue});
 
     it = currentOuter->symbolTable.find(key);
     if (it != currentOuter->symbolTable.end()) {
-      current->function.upvalues.emplace_back(it->second.index,
-                                              it->second.upvalue);
+      current->function.upvalues.emplace_back(
+          it->second.index, it->second.flags & Symbol::upvalue);
       return state().symbolTable[key];
     }
     current->function.upvalues.emplace_back(
@@ -567,4 +653,35 @@ BytecodeGenerator::Resolver::operator()(const ast::Access &node) {
 std::optional<BytecodeGenerator::Symbol>
 BytecodeGenerator::Resolver::operator()(const ast::Subscript &node) {
   return std::visit(*this, node.operand->data);
+}
+
+void BytecodeGenerator::define(std::string_view name, Symbol symbol) {
+  std::pmr::string key{name, &m_compilerAllocator.get()};
+  auto result{state().symbolTable.insert({std::move(key), symbol})};
+  if (result.second) {
+    return;
+  }
+  static_assert(std::is_trivially_copyable<Symbol>());
+  auto oldValue{static_cast<Symbol *>(
+      m_compilerAllocator.get().allocate(sizeof(Symbol), alignof(Symbol)))};
+  if (!oldValue) {
+    throw std::bad_alloc{};
+  }
+  std::memcpy(oldValue, &result.first->second, sizeof(result.first->second));
+  symbol.outer = oldValue;
+  result.first->second = std::move(symbol);
+}
+
+void BytecodeGenerator::undefine(std::string_view name) {
+  std::pmr::string key{name, &m_compilerAllocator.get()};
+  auto it{state().symbolTable.find(key)};
+  if (it == state().symbolTable.end()) {
+    return;
+  }
+  Symbol &symbol{it->second};
+  if (symbol.outer) {
+    it->second = *symbol.outer;
+  } else {
+    state().symbolTable.erase(it);
+  }
 }

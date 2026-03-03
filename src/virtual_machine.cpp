@@ -11,93 +11,96 @@
 void VirtualMachine::run(const Function &function) {
   VirtualMachine virtualMachine{function};
 
-  virtualMachine.run();
+  while (virtualMachine.frame().instructionReader.cursor !=
+         virtualMachine.frame().function->instructions.data() +
+             virtualMachine.frame().function->instructions.size()) {
+    virtualMachine.runInstruction();
+  }
 }
 
-void VirtualMachine::run() {
-  while (frame().instructionReader.cursor !=
-         frame().function->instructions.data() +
-             frame().function->instructions.size()) {
-    const Operation operation{frame().instructionReader.readOperation()};
+void VirtualMachine::runInstruction() {
+  const Operation operation{frame().instructionReader.readOperation()};
 
-    switch (operation) {
-    case Operation::GetConstant:
-      getConstant();
-      break;
-    case Operation::Add:
-      binaryOperation(std::plus{});
-      break;
-    case Operation::Subtract:
-      binaryOperation(std::minus{});
-      break;
-    case Operation::Multiply:
-      binaryOperation(std::multiplies{});
-      break;
-    case Operation::Divide:
-      binaryOperation(std::divides{});
-      break;
-    case Operation::Modulo:
-      binaryOperation(std::modulus{});
-      break;
-    case Operation::Power:
-      binaryOperation(
-          [](Value base, Value exponent) { return base.power(exponent); });
-      break;
-    case Operation::Minus:
-      unaryOperation([](auto a) { return -a; });
-      break;
-    case Operation::Equal:
-      binaryOperation(std::equal_to{});
-      break;
-    case Operation::NotEqual:
-      binaryOperation(std::not_equal_to{});
-      break;
-    case Operation::LessThan:
-      binaryOperation(std::less{});
-      break;
-    case Operation::LessThanOrEqual:
-      binaryOperation(std::less_equal{});
-      break;
-    case Operation::GreaterThan:
-      binaryOperation(std::greater{});
-      break;
-    case Operation::GreaterThanOrEqual:
-      binaryOperation(std::greater_equal{});
-      break;
-    case Operation::CallFunction:
-      callFunction();
-      break;
-    case Operation::Copy:
-      copy();
-      break;
-    case Operation::GetUpvalue:
-      assert(false);
-      break;
-    case Operation::SetUpvalue:
-      assert(false);
-      break;
-    case Operation::SetNil:
-      setNil();
-      break;
-    case Operation::JumpIfFalsy:
-      jumpIfFalsy();
-      break;
-    case Operation::Jump:
-      jump();
-      break;
-    case Operation::NewTable:
-      newTable();
-      break;
-    case Operation::SetTable:
-      setTable();
-      break;
-    case Operation::SetList:
-      setList();
-      break;
-    case Operation::GetTable:
-      getTable();
-      break;
-    }
+  switch (operation) {
+  case Operation::GetConstant:
+    getConstant();
+    break;
+  case Operation::Add:
+    binaryOperation(std::plus{});
+    break;
+  case Operation::Subtract:
+    binaryOperation(std::minus{});
+    break;
+  case Operation::Multiply:
+    binaryOperation(std::multiplies{});
+    break;
+  case Operation::Divide:
+    binaryOperation(std::divides{});
+    break;
+  case Operation::Modulo:
+    binaryOperation(std::modulus{});
+    break;
+  case Operation::Power:
+    binaryOperation(
+        [](Value base, Value exponent) { return base.power(exponent); });
+    break;
+  case Operation::Minus:
+    unaryOperation([](auto a) { return -a; });
+    break;
+  case Operation::Equal:
+    binaryOperation(std::equal_to{});
+    break;
+  case Operation::NotEqual:
+    binaryOperation(std::not_equal_to{});
+    break;
+  case Operation::LessThan:
+    binaryOperation(std::less{});
+    break;
+  case Operation::LessThanOrEqual:
+    binaryOperation(std::less_equal{});
+    break;
+  case Operation::GreaterThan:
+    binaryOperation(std::greater{});
+    break;
+  case Operation::GreaterThanOrEqual:
+    binaryOperation(std::greater_equal{});
+    break;
+  case Operation::CallFunction:
+    callFunction();
+    break;
+  case Operation::Copy:
+    copy();
+    break;
+  case Operation::GetUpvalue:
+    assert(false);
+    break;
+  case Operation::SetUpvalue:
+    assert(false);
+    break;
+  case Operation::SetNil:
+    setNil();
+    break;
+  case Operation::JumpIfFalsy:
+    jumpIfFalsy();
+    break;
+  case Operation::Jump:
+    jump();
+    break;
+  case Operation::NewTable:
+    newTable();
+    break;
+  case Operation::SetTable:
+    setTable();
+    break;
+  case Operation::SetList:
+    setList();
+    break;
+  case Operation::GetTable:
+    getTable();
+    break;
+  case Operation::NumericForLoop:
+    numericForLoop();
+    break;
   }
 }
 
@@ -139,7 +142,7 @@ void VirtualMachine::setNil() {
 
 void VirtualMachine::jumpIfFalsy() {
   const RegisterIndex conditionIndex{frame().instructionReader.readOperand()};
-  const RegisterIndex jumpIndex{frame().instructionReader.readOperand()};
+  const JumpIndex jumpIndex{frame().instructionReader.readOperand()};
 
   const Value condition{getRegister(conditionIndex)};
   if (!condition) {
@@ -149,7 +152,7 @@ void VirtualMachine::jumpIfFalsy() {
 }
 
 void VirtualMachine::jump() {
-  const RegisterIndex jumpIndex{frame().instructionReader.readOperand()};
+  const JumpIndex jumpIndex{frame().instructionReader.readOperand()};
   const std::size_t jump{frame().function->jumps[jumpIndex]};
   frame().instructionReader.cursor = &frame().function->instructions[jump];
 }
@@ -200,4 +203,33 @@ void VirtualMachine::getTable() {
 
   Value value{table.data.table->get(getRegister(fieldIndex))};
   setRegister(destinationIndex, value);
+}
+
+void VirtualMachine::numericForLoop() {
+  const RegisterIndex variableIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex endIndex{variableIndex + 1};
+  const RegisterIndex incrementIndex{variableIndex + 2};
+  const std::size_t jumpAfterLoop{readOperandJump()};
+
+  const uint8_t *jumpToStartOfLoop{frame().instructionReader.cursor};
+  while (true) {
+    const Value variable{getRegister(variableIndex)};
+    const Value end{getRegister(endIndex)};
+    const Value increment{getRegister(incrementIndex)};
+    if ((increment.data.number > 0 && variable.data.number > end.data.number) ||
+        (increment.data.number < 0 && variable.data.number < end.data.number)) {
+      frame().instructionReader.cursor =
+          &frame().function->instructions[jumpAfterLoop];
+      return;
+    }
+
+    while (frame().instructionReader.cursor !=
+           &frame().function->instructions[jumpAfterLoop]) {
+      runInstruction();
+    }
+
+    frame().instructionReader.cursor = jumpToStartOfLoop;
+    const double newValue{variable.data.number + increment.data.number};
+    setRegister(variableIndex, newValue);
+  }
 }

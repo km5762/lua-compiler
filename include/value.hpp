@@ -13,6 +13,7 @@ struct Value;
 struct VirtualMachine;
 
 using RegisterIndex = uint64_t;
+using JumpIndex = uint64_t;
 using StringSize = std::size_t;
 using NativeFunction = Value (*)(std::span<Value> arguments);
 

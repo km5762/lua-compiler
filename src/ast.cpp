@@ -117,7 +117,8 @@ struct Visitor {
   }
   void operator()(const NumericForLoop &node) {
     json[NodeName<NumericForLoop>::value] = {
-        {"declaration", node.declaration->toJson()},
+        {"variable", node.variable},
+        {"start", node.start->toJson()},
         {"end", node.end->toJson()},
         {"increment", node.increment->toJson()},
         {"block", node.block->toJson()}};

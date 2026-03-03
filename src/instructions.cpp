@@ -62,6 +62,8 @@ std::string toString(Operation operation) {
     return "SetList";
   case Operation::GetTable:
     return "GetTable";
+  case Operation::NumericForLoop:
+    return "NumericForLoop";
   default:
     return "Unknown";
   }

@@ -375,24 +375,17 @@ Result<ast::Node *> Parser::parseForLoop() {
     return std::unexpected{assign.error()};
   }
   if (*assign) {
-    Result<ast::Node *> value{parseExpression()};
-    if (!value) {
-      return std::unexpected{value.error()};
-    }
-    auto names{makeList<std::string_view>({name->data})};
-    ast::List<> values{makeList({*value})};
-    Result<ast::Node *> declaration{
-        makeNode(ast::LocalDeclaration{std::move(names), std::move(values)})};
-    if (!declaration) {
-      return std::unexpected{declaration.error()};
+    Result<ast::Node *> start{parseExpression()};
+    if (!start) {
+      return std::unexpected{start.error()};
     }
     if (Result<Token> token{consume(Token::Type::Comma)}; !token) {
       return std::unexpected{token.error()};
     }
 
-    Result<ast::Node *> condition{parseExpression()};
-    if (!condition) {
-      return std::unexpected{condition.error()};
+    Result<ast::Node *> end{parseExpression()};
+    if (!end) {
+      return std::unexpected{end.error()};
     }
 
     Result<ast::Node *> increment{};
@@ -417,7 +410,7 @@ Result<ast::Node *> Parser::parseForLoop() {
     }
 
     return makeNode(
-        ast::NumericForLoop{*declaration, *condition, *increment, *block});
+        ast::NumericForLoop{name->data, *start, *end, *increment, *block});
   }
 
   if (Result<Token> token{consume(Token::Type::Comma)}; !token) {

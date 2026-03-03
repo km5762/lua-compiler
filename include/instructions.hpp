@@ -31,6 +31,7 @@ enum class Operation : uint8_t {
   SetTable,
   SetList,
   GetTable,
+  NumericForLoop,
 };
 
 std::string toString(Operation operation);

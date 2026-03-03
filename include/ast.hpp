@@ -72,7 +72,8 @@ struct RepeatLoop {
   Node *block{};
 };
 struct NumericForLoop {
-  Node *declaration{};
+  std::string_view variable{};
+  Node *start{};
   Node *end{};
   Node *increment{};
   Node *block{};

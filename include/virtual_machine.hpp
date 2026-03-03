@@ -43,8 +43,14 @@ private:
 
   VirtualMachine(const Function &function) { loadFunction(function); }
 
-  void run();
+  void runInstruction();
   Frame &frame() { return m_frames[m_frameIndex]; }
+  Value readOperandRegister() {
+    return getRegister(frame().instructionReader.readOperand());
+  }
+  std::size_t readOperandJump() {
+    return frame().function->jumps[frame().instructionReader.readOperand()];
+  }
   Value getRegister(RegisterIndex index) { return frame().registers[index]; }
   void setRegister(RegisterIndex index, Value value) {
     frame().registers[index] = value;
@@ -110,4 +116,5 @@ private:
   void setTable();
   void setList();
   void getTable();
+  void numericForLoop();
 };

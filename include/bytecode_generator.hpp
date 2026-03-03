@@ -7,7 +7,7 @@
 
 #include <memory_resource>
 
-enum class BytecodeGeneratorErrorCode { UnresolvedSymbol };
+enum class BytecodeGeneratorErrorCode { UnresolvedSymbol, AssignToImmutable };
 class BytecodeGeneratorErrorCategory : public std::error_category {
   const char *name() const noexcept override { return "bytecode generator"; }
 
@@ -15,6 +15,8 @@ class BytecodeGeneratorErrorCategory : public std::error_category {
     switch (static_cast<BytecodeGeneratorErrorCode>(ev)) {
     case BytecodeGeneratorErrorCode::UnresolvedSymbol:
       return "unresolved symbol";
+    case BytecodeGeneratorErrorCode::AssignToImmutable:
+      return "assign to immutable";
     default:
       return "unknown bytecode generator error";
     }
@@ -72,7 +74,11 @@ private:
 
   struct Symbol {
     RegisterIndex index{};
-    bool upvalue{};
+
+    uint8_t flags{};
+    static constexpr uint8_t upvalue{1};
+    static constexpr uint8_t immutable{1 << 1};
+
     Symbol *outer{};
   };
   struct TransparentHash {
@@ -151,6 +157,12 @@ private:
     RegisterIndex allocateRegister() { return function.registerCount++; }
     RegisterIndex nextRegister() { return function.registerCount; }
     RegisterIndex lastRegister() { return function.registerCount - 1; }
+    void copy(RegisterIndex to, RegisterIndex from) {
+      if (from != to) {
+        allocateRegister();
+        instructionWriter.write(Operation::Copy, to, from);
+      }
+    }
   };
   std::reference_wrapper<std::pmr::memory_resource> m_compilerAllocator;
   std::reference_wrapper<std::pmr::memory_resource> m_runtimeAllocator;
@@ -169,4 +181,6 @@ private:
   State &global() { return m_states.front(); }
 
   std::optional<Symbol> resolve(std::string_view name);
+  void define(std::string_view name, Symbol symbol);
+  void undefine(std::string_view name);
 };

@@ -132,3 +132,52 @@ repeat
 	runs = runs + 1
 	x = true
 until x
+
+-- Numeric for loops
+
+sum = 0
+for i = 1, 5 do
+	sum = sum + i
+end
+assert(sum == 15, "basic numeric for failed")
+
+sum = 0
+for i = 1, 5, 2 do
+	sum = sum + i
+end
+assert(sum == 9, "numeric for with step failed")
+
+sum = 0
+for i = 5, 1, -2 do
+	sum = sum + i
+end
+assert(sum == 9, "numeric for with negative step failed")
+
+ran = false
+for i = 5, 1 do
+	ran = true
+end
+assert(ran == false, "numeric for should not run when start > end with positive step")
+
+count = 0
+for i = 3, 3 do
+	count = count + 1
+end
+assert(count == 1, "numeric for single iteration failed")
+
+last_i = 0
+for i = 1, 3 do
+	i = 100
+	last_i = last_i + 1
+end
+assert(last_i == 3, "loop variable modification affected iteration")
+
+a = 1
+b = 3
+sum = 0
+for i = a, b do
+	a = 100
+	b = 200
+	sum = sum + i
+end
+assert(sum == 6, "for bounds not evaluated once at loop start")
