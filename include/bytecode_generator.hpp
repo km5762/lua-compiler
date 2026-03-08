@@ -7,7 +7,7 @@
 
 #include <memory_resource>
 
-enum class BytecodeGeneratorErrorCode { UnresolvedSymbol, AssignToImmutable };
+enum class BytecodeGeneratorErrorCode { UnresolvedSymbol };
 class BytecodeGeneratorErrorCategory : public std::error_category {
   const char *name() const noexcept override { return "bytecode generator"; }
 
@@ -15,8 +15,6 @@ class BytecodeGeneratorErrorCategory : public std::error_category {
     switch (static_cast<BytecodeGeneratorErrorCode>(ev)) {
     case BytecodeGeneratorErrorCode::UnresolvedSymbol:
       return "unresolved symbol";
-    case BytecodeGeneratorErrorCode::AssignToImmutable:
-      return "assign to immutable";
     default:
       return "unknown bytecode generator error";
     }
@@ -129,18 +127,29 @@ private:
     }
   };
 
+  struct Scope {
+    std::pmr::vector<std::pmr::string> variables{};
+    Scope *outer;
+  };
+
   struct State {
     State *outer{};
     Function function;
     InstructionWriter instructionWriter;
     SymbolTable symbolTable{};
     std::pmr::vector<RegisterIndex> breakJumps{};
+    Scope *scope{};
 
     State(std::pmr::memory_resource &compilerAllocator,
           std::pmr::memory_resource &runtimeAllocator, State *outer = nullptr)
         : outer{outer}, function{runtimeAllocator},
           instructionWriter(function.instructions),
-          symbolTable{&compilerAllocator}, breakJumps{&compilerAllocator} {}
+          symbolTable{&compilerAllocator}, breakJumps{&compilerAllocator},
+          m_compilerAllocator{compilerAllocator} {
+      void *storage{compilerAllocator.allocate(sizeof(Scope), alignof(Scope))};
+      scope = new (storage)
+          Scope{std::pmr::vector<std::pmr::string>{&compilerAllocator}};
+    }
 
     template <typename... Args> RegisterIndex addConstant(Args &&...args) {
       function.constants.emplace_back(std::forward<Args>(args)...);
@@ -163,24 +172,42 @@ private:
         instructionWriter.write(Operation::Copy, to, from);
       }
     }
+
+    void define(std::string_view name, Symbol symbol);
+    void undefine(std::string_view name);
+
+  private:
+    std::reference_wrapper<std::pmr::memory_resource> m_compilerAllocator;
   };
   std::reference_wrapper<std::pmr::memory_resource> m_compilerAllocator;
   std::reference_wrapper<std::pmr::memory_resource> m_runtimeAllocator;
-  std::pmr::vector<State> m_states{};
+  State *m_state{};
+  State *m_global{};
 
   BytecodeGenerator(std::pmr::memory_resource &compilerAllocator,
                     std::pmr::memory_resource &runtimeAllocator)
       : m_compilerAllocator{compilerAllocator},
-        m_runtimeAllocator{runtimeAllocator}, m_states(&compilerAllocator) {
-    m_states.emplace_back(compilerAllocator, runtimeAllocator);
+        m_runtimeAllocator{runtimeAllocator} {
+    pushState();
+    m_global = m_state;
   }
 
   void defineNativeFunctions();
 
-  State &state() { return m_states.back(); }
-  State &global() { return m_states.front(); }
+  void pushState() {
+    void *storage{
+        m_compilerAllocator.get().allocate(sizeof(State), alignof(State))};
+    auto *state{new (storage) State{m_compilerAllocator, m_runtimeAllocator}};
+
+    state->outer = m_state;
+    m_state = state;
+  }
+  void popState() {
+    assert(m_state);
+    m_state = m_state->outer;
+  }
+  State &state() { return *m_state; }
+  State &global() { return *m_global; }
 
   std::optional<Symbol> resolve(std::string_view name);
-  void define(std::string_view name, Symbol symbol);
-  void undefine(std::string_view name);
 };

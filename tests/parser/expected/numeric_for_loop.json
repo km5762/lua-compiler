@@ -4,17 +4,9 @@
       "statements": [
         {
           "NumericForLoop": {
-            "declaration": {
-              "LocalDeclaration": {
-                "names": [
-                  "i"
-                ],
-                "values": [
-                  {
-                    "Number": 10.0
-                  }
-                ]
-              }
+            "variable": "i",
+            "start": {
+              "Number": 10.0
             },
             "end": {
               "Number": 1.0

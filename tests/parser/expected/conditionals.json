@@ -79,83 +79,89 @@
                 ]
               }
             },
-            "alternate": {
-              "Conditional": {
-                "condition": {
-                  "BinaryOperator": {
-                    "operands": [
-                      {
-                        "Name": "player1_score"
-                      },
-                      {
-                        "Name": "player2_score"
-                      }
-                    ],
-                    "operator": "GreaterThan"
-                  }
-                },
-                "block": {
-                  "Block": {
-                    "statements": [
-                      {
-                        "FunctionCall": {
-                          "operand": {
-                            "Name": "print"
-                          },
-                          "arguments": [
-                            {
-                              "Number": 2.0
-                            }
-                          ]
+            "alternate": [
+              {
+                "Conditional": {
+                  "condition": {
+                    "BinaryOperator": {
+                      "operands": [
+                        {
+                          "Name": "player1_score"
+                        },
+                        {
+                          "Name": "player2_score"
                         }
-                      }
-                    ]
-                  }
-                },
-                "alternate": {
-                  "Conditional": {
-                    "condition": {
-                      "BinaryOperator": {
-                        "operands": [
-                          {
-                            "Name": "player1_score"
-                          },
-                          {
-                            "Name": "player2_score"
+                      ],
+                      "operator": "GreaterThan"
+                    }
+                  },
+                  "block": {
+                    "Block": {
+                      "statements": [
+                        {
+                          "FunctionCall": {
+                            "operand": {
+                              "Name": "print"
+                            },
+                            "arguments": [
+                              {
+                                "Number": 2.0
+                              }
+                            ]
                           }
-                        ],
-                        "operator": "LessThan"
-                      }
-                    },
-                    "block": {
-                      "Block": {
-                        "statements": [
-                          {
-                            "FunctionCall": {
-                              "operand": {
-                                "Name": "print"
+                        }
+                      ]
+                    }
+                  },
+                  "alternate": [
+                    {
+                      "Conditional": {
+                        "condition": {
+                          "BinaryOperator": {
+                            "operands": [
+                              {
+                                "Name": "player1_score"
                               },
-                              "arguments": [
-                                {
-                                  "Number": 3.0
+                              {
+                                "Name": "player2_score"
+                              }
+                            ],
+                            "operator": "LessThan"
+                          }
+                        },
+                        "block": {
+                          "Block": {
+                            "statements": [
+                              {
+                                "FunctionCall": {
+                                  "operand": {
+                                    "Name": "print"
+                                  },
+                                  "arguments": [
+                                    {
+                                      "Number": 3.0
+                                    }
+                                  ]
                                 }
-                              ]
-                            }
+                              }
+                            ]
                           }
-                        ]
-                      }
-                    },
-                    "alternate": {
-                      "Block": {
-                        "statements": [
+                        },
+                        "alternate": [
                           {
-                            "FunctionCall": {
-                              "operand": {
-                                "Name": "print"
-                              },
-                              "arguments": [
+                            "Block": {
+                              "statements": [
                                 {
-                                  "Number": 4.0
+                                  "FunctionCall": {
+                                    "operand": {
+                                      "Name": "print"
+                                    },
+                                    "arguments": [
+                                      {
+                                        "Number": 4.0
+                                      }
+                                    ]
+                                  }
                                 }
                               ]
                             }
@@ -163,10 +169,10 @@
                         ]
                       }
                     }
-                  }
+                  ]
                 }
               }
-            }
+            ]
           }
         }
       ]

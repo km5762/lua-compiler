@@ -7,27 +7,10 @@
 #include <format>
 #include <iostream>
 
-class Stack {
-public:
-  Value *allocate(std::size_t size) {
-    m_stackIndex += size;
-    if (m_stackIndex > m_stack.size()) {
-      m_stack.resize(m_stackIndex);
-    }
-    return &m_stack[m_stackIndex - size];
-  }
-
-  void free(std::size_t size) { m_stackIndex -= size; }
-
-private:
-  std::vector<Value> m_stack{};
-  std::size_t m_stackIndex{};
-};
-
 struct Frame {
-  Value *registers{};
   InstructionReader instructionReader{};
   const Function *function{};
+  std::size_t base{};
 };
 
 constexpr std::size_t maxFrames{1024};
@@ -37,11 +20,14 @@ public:
   static void run(const Function &function);
 
 private:
-  Stack m_stack{};
+  std::vector<Value> m_stack{};
   std::size_t m_frameIndex{};
   std::array<Frame, maxFrames> m_frames{};
 
-  VirtualMachine(const Function &function) { loadFunction(function); }
+  VirtualMachine(const Function &function) {
+    m_stack.resize(function.registerCount);
+    m_frames[m_frameIndex] = {{function.instructions.data()}, &function};
+  }
 
   void runInstruction();
   Frame &frame() { return m_frames[m_frameIndex]; }
@@ -51,23 +37,20 @@ private:
   std::size_t readOperandJump() {
     return frame().function->jumps[frame().instructionReader.readOperand()];
   }
-  Value getRegister(RegisterIndex index) { return frame().registers[index]; }
+  Value &getRegister(RegisterIndex index) {
+    return m_stack[frame().base + index];
+  }
   void setRegister(RegisterIndex index, Value value) {
-    frame().registers[index] = value;
+    m_stack[frame().base + index] = value;
   }
   Value getConstant(RegisterIndex index) {
     return frame().function->constants[index];
   }
-  void pushFrame(Value *registers, InstructionReader instructionReader,
-                 const Function *function) {
-    m_frames[m_frameIndex++] = {registers, instructionReader, function};
+  void pushFrame(const Function *function, std::size_t base) {
+    m_frames[++m_frameIndex] = {
+        {function->instructions.data()}, function, base};
   }
   void popFrame() { --m_frameIndex; }
-  void loadFunction(const Function &function) {
-    Value *registers{m_stack.allocate(function.registerCount)};
-    m_frames[m_frameIndex] = {
-        registers, {function.instructions.data()}, &function};
-  }
   template <typename... Args>
   [[noreturn]] void panic(std::string_view message, Args &&...args) {
     auto formatted = std::vformat(message, std::make_format_args(args...));

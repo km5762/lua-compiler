@@ -4,6 +4,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
+#include <vector>
 
 enum class Operation : uint8_t {
   GetConstant,
@@ -32,6 +34,7 @@ enum class Operation : uint8_t {
   SetList,
   GetTable,
   NumericForLoop,
+  Return,
 };
 
 std::string toString(Operation operation);
@@ -62,11 +65,11 @@ public:
   InstructionWriter(std::pmr::vector<uint8_t> &instructions)
       : instructions{instructions} {}
 
-  void write(Operation operation, RegisterIndex operand1);
-  void write(Operation operation, RegisterIndex operand1,
-             RegisterIndex operand2);
-  void write(Operation operation, RegisterIndex operand1,
-             RegisterIndex operand2, RegisterIndex operand3);
+  void write(Operation operation);
+  void write(Operation operation, uint64_t operand1);
+  void write(Operation operation, uint64_t operand1, uint64_t operand2);
+  void write(Operation operation, uint64_t operand1, uint64_t operand2,
+             uint64_t operand3);
 
 private:
   uint8_t m_operandSize{};
@@ -76,7 +79,7 @@ private:
                            static_cast<uint8_t>(operation));
   }
 
-  inline void writeOperand(RegisterIndex operand) {
+  inline void writeOperand(uint64_t operand) {
     std::size_t offset{instructions.size()};
     instructions.resize(instructions.size() + m_operandSize);
     std::memcpy(instructions.data() + offset, &operand, m_operandSize);

@@ -101,27 +101,43 @@ void VirtualMachine::runInstruction() {
   case Operation::NumericForLoop:
     numericForLoop();
     break;
+  case Operation::Return:
+    popFrame();
+    break;
   }
 }
 
 void VirtualMachine::getConstant() {
   const RegisterIndex registerIndex{frame().instructionReader.readOperand()};
   const RegisterIndex constantIndex{frame().instructionReader.readOperand()};
-  frame().registers[registerIndex] = frame().function->constants[constantIndex];
+  setRegister(registerIndex, getConstant(constantIndex));
 }
 
 void VirtualMachine::callFunction() {
   const RegisterIndex functionIndex{frame().instructionReader.readOperand()};
   const Value value{getRegister(functionIndex)};
+  const RegisterIndex firstArgumentIndex{
+      frame().instructionReader.readOperand()};
+  const RegisterIndex argumentsSize{frame().instructionReader.readOperand()};
 
   switch (value.type) {
   case Value::Type::NativeFunction: {
-    NativeFunction nativeFunction{value.data.nativeFunction};
-    RegisterIndex firstArgumentIndex{frame().instructionReader.readOperand()};
-    RegisterIndex argumentsSize{frame().instructionReader.readOperand()};
-    std::span<Value> arguments{&frame().registers[firstArgumentIndex],
-                               argumentsSize};
+    const NativeFunction nativeFunction{value.data.nativeFunction};
+    const std::span<Value> arguments{&getRegister(firstArgumentIndex),
+                                     argumentsSize};
     nativeFunction(arguments);
+    break;
+  }
+  case Value::Type::Function: {
+    const Function *function{value.data.function};
+    const std::size_t requiredStackSize{frame().base + firstArgumentIndex +
+                                        function->registerCount};
+
+    if (requiredStackSize > m_stack.size()) {
+      m_stack.resize(requiredStackSize);
+    }
+
+    pushFrame(function, frame().base + firstArgumentIndex);
     break;
   }
   default:

@@ -1,7 +1,7 @@
 #include "instructions.hpp"
 
 namespace {
-inline uint8_t computeOperandSize(RegisterIndex operand) {
+inline uint8_t computeOperandSize(uint64_t operand) {
   uint8_t size{1};
   size += (operand > 0xFF);
   size += (operand > 0xFFFF);
@@ -75,14 +75,18 @@ Operation InstructionReader::readOperation() {
   return static_cast<Operation>(operation & 0x3F);
 }
 
-void InstructionWriter::write(Operation operation, RegisterIndex operand1) {
+void InstructionWriter::write(Operation operation) {
+  writeOperation(operation);
+}
+
+void InstructionWriter::write(Operation operation, uint64_t operand1) {
   m_operandSize = computeOperandSize(operand1);
   writeOperation(operation);
   writeOperand(operand1);
 }
 
-void InstructionWriter::write(Operation operation, RegisterIndex operand1,
-                              RegisterIndex operand2) {
+void InstructionWriter::write(Operation operation, uint64_t operand1,
+                              uint64_t operand2) {
   m_operandSize =
       std::max(computeOperandSize(operand1), computeOperandSize(operand2));
   writeOperation(operation);
@@ -90,8 +94,8 @@ void InstructionWriter::write(Operation operation, RegisterIndex operand1,
   writeOperand(operand2);
 }
 
-void InstructionWriter::write(Operation operation, RegisterIndex operand1,
-                              RegisterIndex operand2, RegisterIndex operand3) {
+void InstructionWriter::write(Operation operation, uint64_t operand1,
+                              uint64_t operand2, uint64_t operand3) {
   m_operandSize =
       std::max(computeOperandSize(operand1), computeOperandSize(operand2));
   m_operandSize = std::max(m_operandSize, computeOperandSize(operand3));
