@@ -67,7 +67,6 @@ private:
     Result<RegisterIndex> operator()(const ast::TableConstructor &node);
 
   private:
-    RegisterIndex allocateString(std::string_view stringView);
   };
 
   struct Symbol {
@@ -145,7 +144,8 @@ private:
         : outer{outer}, function{runtimeAllocator},
           instructionWriter(function.instructions),
           symbolTable{&compilerAllocator}, breakJumps{&compilerAllocator},
-          m_compilerAllocator{compilerAllocator} {
+          m_compilerAllocator{compilerAllocator},
+          m_runtimeAllocator{compilerAllocator} {
       void *storage{compilerAllocator.allocate(sizeof(Scope), alignof(Scope))};
       scope = new (storage)
           Scope{std::pmr::vector<std::pmr::string>{&compilerAllocator}};
@@ -155,6 +155,7 @@ private:
       function.constants.emplace_back(std::forward<Args>(args)...);
       return function.constants.size() - 1;
     }
+    RegisterIndex allocateString(std::string_view stringView);
     RegisterIndex addJump() {
       function.jumps.push_back(function.instructions.size());
       return function.jumps.size() - 1;
@@ -178,6 +179,7 @@ private:
 
   private:
     std::reference_wrapper<std::pmr::memory_resource> m_compilerAllocator;
+    std::reference_wrapper<std::pmr::memory_resource> m_runtimeAllocator;
   };
   std::reference_wrapper<std::pmr::memory_resource> m_compilerAllocator;
   std::reference_wrapper<std::pmr::memory_resource> m_runtimeAllocator;
@@ -210,4 +212,5 @@ private:
   State &global() { return *m_global; }
 
   std::optional<Symbol> resolve(std::string_view name);
+  std::optional<Error> assign(const ast::Node &node, RegisterIndex index);
 };
