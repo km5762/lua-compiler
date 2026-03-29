@@ -26,7 +26,6 @@ enum class Operation : uint8_t {
   Copy,
   GetUpvalue,
   SetUpvalue,
-  SetNil,
   JumpIfFalsy,
   Jump,
   NewTable,

@@ -48,8 +48,6 @@ std::string toString(Operation operation) {
     return "GetUpvalue";
   case Operation::SetUpvalue:
     return "SetUpvalue";
-  case Operation::SetNil:
-    return "SetNil";
   case Operation::JumpIfFalsy:
     return "JumpIfFalsy";
   case Operation::Jump:

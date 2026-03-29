@@ -76,13 +76,14 @@ BytecodeGenerator::Visitor::operator()(const ast::LocalDeclaration &node) {
     const RegisterIndex localIndex{generator.state().allocateRegister()};
     generator.state().define(key, Symbol{localIndex});
 
+    RegisterIndex valueIndex{firstValueIndex + i};
     if (i > node.values.size() - 1) {
       const RegisterIndex constantNilIndex{generator.state().addConstant()};
-      generator.state().instructionWriter.write(Operation::SetNil, localIndex);
-      continue;
+      valueIndex = generator.state().allocateRegister();
+      generator.state().instructionWriter.write(Operation::GetConstant,
+                                                valueIndex, constantNilIndex);
     }
 
-    const RegisterIndex valueIndex{firstValueIndex + i};
     generator.state().instructionWriter.write(Operation::Copy, localIndex,
                                               valueIndex);
   }
@@ -731,6 +732,7 @@ std::optional<Error> BytecodeGenerator::assign(const ast::Node &node,
 
         state().instructionWriter.write(Operation::SetTable, *tableIndex,
                                         *indexIndex, index);
+        return {};
       },
       [this, index](const ast::Access &node) -> std::optional<Error> {
         BytecodeGenerator::Visitor visitor{*this};
@@ -743,6 +745,7 @@ std::optional<Error> BytecodeGenerator::assign(const ast::Node &node,
 
         state().instructionWriter.write(Operation::SetTable, *tableIndex,
                                         memberIndex, index);
+        return {};
       },
       [](auto &&) -> std::optional<Error> {
         assert(false && "assign to non-lvalue");

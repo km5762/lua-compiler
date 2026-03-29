@@ -159,11 +159,6 @@ std::optional<Error> disassemble(std::string_view program) {
                                registerIndex);
       break;
     }
-    case Operation::SetNil: {
-      const RegisterIndex destinationIndex{reader.readOperand()};
-      std::cout << std::format("  SetNil r{}\n", destinationIndex);
-      break;
-    }
     case Operation::JumpIfFalsy: {
       const RegisterIndex conditionIndex{reader.readOperand()};
       const JumpIndex jumpIndex{reader.readOperand()};

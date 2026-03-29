@@ -92,7 +92,6 @@ private:
 
   void callFunction();
   void copy();
-  void setNil();
   void jumpIfFalsy();
   void jump();
   void newTable();

@@ -77,9 +77,6 @@ void VirtualMachine::runInstruction() {
   case Operation::SetUpvalue:
     assert(false);
     break;
-  case Operation::SetNil:
-    setNil();
-    break;
   case Operation::JumpIfFalsy:
     jumpIfFalsy();
     break;
@@ -149,11 +146,6 @@ void VirtualMachine::copy() {
   const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
   const RegisterIndex sourceIndex{frame().instructionReader.readOperand()};
   setRegister(destinationIndex, getRegister(sourceIndex));
-}
-
-void VirtualMachine::setNil() {
-  const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
-  setRegister(destinationIndex, {});
 }
 
 void VirtualMachine::jumpIfFalsy() {
