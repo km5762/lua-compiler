@@ -202,9 +202,6 @@ Result<Token> Scanner::scanString() {
 Result<std::string_view> Scanner::unescapeString(std::string_view string) {
   char *unescaped{
       static_cast<char *>(m_allocator.get().allocate(string.size()))};
-  if (!unescaped) {
-    throw std::bad_alloc{};
-  }
 
   std::size_t i{};
   for (std::size_t j{}; j < string.size(); ++j) {

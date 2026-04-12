@@ -95,13 +95,17 @@ struct Nil {};
 struct TableConstructor {
   List<std::pair<ast::Node *, ast::Node *>> fields{};
 };
+struct FunctionDeclaration {
+  Node *identifier{};
+  Node *function{};
+};
 
-using Data =
-    std::variant<std::monostate, Block, Chunk, LocalDeclaration, Function,
-                 Assignment, BinaryOperator, UnaryOperator, Return, Break,
-                 Number, Boolean, Name, Subscript, Access, FunctionCall,
-                 WhileLoop, NumericForLoop, GenericForLoop, RepeatLoop,
-                 Conditional, String, Nil, TableConstructor>;
+using Data = std::variant<std::monostate, Block, Chunk, LocalDeclaration,
+                          Function, Assignment, BinaryOperator, UnaryOperator,
+                          Return, Break, Number, Boolean, Name, Subscript,
+                          Access, FunctionCall, WhileLoop, NumericForLoop,
+                          GenericForLoop, RepeatLoop, Conditional, String, Nil,
+                          TableConstructor, FunctionDeclaration>;
 
 template <typename T> struct NodeName;
 #define DECLARE_NODE_NAME(type)                                                \
@@ -131,6 +135,7 @@ DECLARE_NODE_NAME(Conditional);
 DECLARE_NODE_NAME(String);
 DECLARE_NODE_NAME(Nil);
 DECLARE_NODE_NAME(TableConstructor);
+DECLARE_NODE_NAME(FunctionDeclaration);
 
 #undef DECLARE_NODE_NAME
 

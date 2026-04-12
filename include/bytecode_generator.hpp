@@ -65,8 +65,7 @@ private:
     Result<RegisterIndex> operator()(const ast::String &node);
     Result<RegisterIndex> operator()(const ast::Nil &node);
     Result<RegisterIndex> operator()(const ast::TableConstructor &node);
-
-  private:
+    Result<RegisterIndex> operator()(const ast::FunctionDeclaration &node);
   };
 
   struct Symbol {
@@ -145,7 +144,7 @@ private:
           instructionWriter(function.instructions),
           symbolTable{&compilerAllocator}, breakJumps{&compilerAllocator},
           m_compilerAllocator{compilerAllocator},
-          m_runtimeAllocator{compilerAllocator} {
+          m_runtimeAllocator{runtimeAllocator} {
       void *storage{compilerAllocator.allocate(sizeof(Scope), alignof(Scope))};
       scope = new (storage)
           Scope{std::pmr::vector<std::pmr::string>{&compilerAllocator}};
@@ -213,4 +212,6 @@ private:
 
   std::optional<Symbol> resolve(std::string_view name);
   std::optional<Error> assign(const ast::Node &node, RegisterIndex index);
+  std::optional<Error> generateFunctionAt(const ast::Function &node,
+                                          RegisterIndex index);
 };

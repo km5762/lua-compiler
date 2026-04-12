@@ -93,29 +93,8 @@ BytecodeGenerator::Visitor::operator()(const ast::LocalDeclaration &node) {
 
 Result<RegisterIndex>
 BytecodeGenerator::Visitor::operator()(const ast::Function &node) {
-  generator.pushState();
-
-  for (const auto &parameter : node.parameters) {
-    const RegisterIndex parameterIndex{generator.state().allocateRegister()};
-    generator.state().define(parameter, {parameterIndex});
-  }
-
-  const Result<RegisterIndex> blockIndex{std::visit(*this, node.block->data)};
-  if (!blockIndex) {
-    return std::unexpected{blockIndex.error()};
-  }
-
-  void *storage{generator.m_runtimeAllocator.get().allocate(sizeof(Function),
-                                                            alignof(Function))};
-  auto allocatedFunction{new (storage)
-                             Function{std::move(generator.state().function)}};
-  generator.popState();
-
-  const RegisterIndex constantIndex{
-      generator.state().addConstant(allocatedFunction)};
   const RegisterIndex functionIndex{generator.state().allocateRegister()};
-  generator.state().instructionWriter.write(Operation::GetConstant,
-                                            functionIndex, constantIndex);
+  generator.generateFunctionAt(node, functionIndex);
 
   return functionIndex;
 }
@@ -148,15 +127,7 @@ BytecodeGenerator::Visitor::operator()(const ast::Assignment &node) {
     const std::optional<Error> error{
         generator.assign(*node.variables[i], valueIndex)};
     if (error) {
-      const auto *name{std::get_if<ast::Name>(&node.variables[i]->data)};
-      if (!name ||
-          error->code != BytecodeGeneratorErrorCode::UnresolvedSymbol) {
-        return std::unexpected{*error};
-      }
-
-      generator.global().define(name->name,
-                                {generator.global().allocateRegister()});
-      assert(!generator.assign(*node.variables[i], valueIndex));
+      return std::unexpected{*error};
     }
   }
 
@@ -519,9 +490,6 @@ BytecodeGenerator::State::allocateString(std::string_view stringView) {
   const RegisterIndex destinationIndex{allocateRegister()};
   auto *string{static_cast<StringSize *>(m_runtimeAllocator.get().allocate(
       sizeof(StringSize) + stringView.size(), alignof(StringSize)))};
-  if (!string) {
-    throw std::bad_alloc{};
-  }
 
   *string = stringView.size();
   std::memcpy(string + 1, stringView.data(), stringView.size());
@@ -604,6 +572,27 @@ BytecodeGenerator::Visitor::operator()(const ast::TableConstructor &node) {
   return tableIndex;
 }
 
+Result<RegisterIndex>
+BytecodeGenerator::Visitor::operator()(const ast::FunctionDeclaration &node) {
+  const RegisterIndex functionIndex{generator.state().allocateRegister()};
+  auto const *function{std::get_if<ast::Function>(&node.function->data)};
+  assert(function);
+  auto const *name{std::get_if<ast::Name>(&node.identifier->data)};
+  // If defining a member function, it is assumed the root object is already
+  // defined beforehand, and the nested lookups are done dynamically at runtime
+  if (name) {
+    generator.state().define(name->name, {functionIndex});
+  }
+  generator.generateFunctionAt(*function, functionIndex);
+  const std::optional<Error> error{
+      generator.assign(*node.identifier, functionIndex)};
+  if (error) {
+    return std::unexpected{*error};
+  }
+
+  return functionIndex;
+}
+
 void BytecodeGenerator::defineNativeFunctions() {
   const std::array nativeFunctions{
       std::pair<std::string_view, NativeFunction>{"print", native::print},
@@ -674,9 +663,6 @@ void BytecodeGenerator::State::define(std::string_view name, Symbol symbol) {
   static_assert(std::is_trivially_copyable<Symbol>());
   auto oldValue{static_cast<Symbol *>(
       m_compilerAllocator.get().allocate(sizeof(Symbol), alignof(Symbol)))};
-  if (!oldValue) {
-    throw std::bad_alloc{};
-  }
   std::memcpy(oldValue, &result.first->second, sizeof(result.first->second));
   symbol.outer = oldValue;
   result.first->second = std::move(symbol);
@@ -700,13 +686,15 @@ std::optional<Error> BytecodeGenerator::assign(const ast::Node &node,
                                                RegisterIndex index) {
   const Overloads visitor = Overloads{
       [this, index](const ast::Name &node) -> std::optional<Error> {
-        const std::optional<Symbol> symbol{resolve(node.name)};
+        std::optional<Symbol> symbol{resolve(node.name)};
         if (!symbol) {
-          return makeUnresolvedSymbolError(node.name);
+          const Symbol globalSymbol{global().allocateRegister()};
+          global().define(node.name, globalSymbol);
+          symbol = globalSymbol;
         }
 
         if (symbol->flags & Symbol::immutable) {
-          return std::nullopt;
+          return {};
         }
 
         Operation writeOperation{Operation::Copy};
@@ -715,7 +703,7 @@ std::optional<Error> BytecodeGenerator::assign(const ast::Node &node,
         }
 
         state().instructionWriter.write(writeOperation, symbol->index, index);
-        return std::nullopt;
+        return {};
       },
       [this, index](const ast::Subscript &node) -> std::optional<Error> {
         BytecodeGenerator::Visitor visitor{*this};
@@ -753,4 +741,32 @@ std::optional<Error> BytecodeGenerator::assign(const ast::Node &node,
       }};
 
   return std::visit(visitor, node.data);
+}
+
+std::optional<Error>
+BytecodeGenerator::generateFunctionAt(const ast::Function &node,
+                                      RegisterIndex index) {
+  pushState();
+
+  for (const auto &parameter : node.parameters) {
+    const RegisterIndex parameterIndex{state().allocateRegister()};
+    state().define(parameter, {parameterIndex});
+  }
+
+  Visitor blockVisitor{*this};
+  const Result<RegisterIndex> blockIndex{
+      std::visit(blockVisitor, node.block->data)};
+  if (!blockIndex) {
+    return blockIndex.error();
+  }
+
+  void *storage{
+      m_runtimeAllocator.get().allocate(sizeof(Function), alignof(Function))};
+  auto allocatedFunction{new (storage) Function{std::move(state().function)}};
+  popState();
+
+  const RegisterIndex constantIndex{state().addConstant(allocatedFunction)};
+  state().instructionWriter.write(Operation::NewClosure, index, constantIndex);
+
+  return {};
 }

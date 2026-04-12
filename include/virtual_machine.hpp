@@ -4,12 +4,14 @@
 #include "value.hpp"
 
 #include <array>
+#include <cassert>
 #include <format>
 #include <iostream>
 
 struct Frame {
   InstructionReader instructionReader{};
   const Function *function{};
+  Closure *closure{};
   std::size_t base{};
 };
 
@@ -31,14 +33,27 @@ private:
 
   void runInstruction();
   Frame &frame() { return m_frames[m_frameIndex]; }
-  Value readOperandRegister() {
+  Value &readOperandRegister() {
     return getRegister(frame().instructionReader.readOperand());
   }
   std::size_t readOperandJump() {
     return frame().function->jumps[frame().instructionReader.readOperand()];
   }
+  Value &readOperandUpvalue() {
+    const RegisterIndex upvalueIndex{frame().instructionReader.readOperand()};
+    assert(frame().closure->upvalueIndices.size() > upvalueIndex);
+    const StackIndex stackIndex{frame().closure->upvalueIndices[upvalueIndex]};
+
+    return m_stack[stackIndex];
+  }
+  RegisterIndex stackIndex(const Frame &frame, RegisterIndex index) {
+    return frame.base + index;
+  }
   Value &getRegister(RegisterIndex index) {
-    return m_stack[frame().base + index];
+    return m_stack[stackIndex(frame(), index)];
+  }
+  Value &getRegister(Frame &frame, RegisterIndex index) {
+    return m_stack[stackIndex(frame, index)];
   }
   void setRegister(RegisterIndex index, Value value) {
     m_stack[frame().base + index] = value;
@@ -46,9 +61,9 @@ private:
   Value getConstant(RegisterIndex index) {
     return frame().function->constants[index];
   }
-  void pushFrame(const Function *function, std::size_t base) {
+  void pushFrame(const Function *function, Closure *closure, std::size_t base) {
     m_frames[++m_frameIndex] = {
-        {function->instructions.data()}, function, base};
+        {function->instructions.data()}, function, closure, base};
   }
   void popFrame() { --m_frameIndex; }
   template <typename... Args>
@@ -92,6 +107,8 @@ private:
 
   void callFunction();
   void copy();
+  void getUpvalue();
+  void setUpvalue();
   void jumpIfFalsy();
   void jump();
   void newTable();
@@ -99,4 +116,5 @@ private:
   void setList();
   void getTable();
   void numericForLoop();
+  void newClosure();
 };

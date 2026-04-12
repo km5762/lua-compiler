@@ -1,5 +1,4 @@
 #include "virtual_machine.hpp"
-#include "bytecode_generator.hpp"
 #include "instructions.hpp"
 #include "value.hpp"
 #include <cassert>
@@ -72,10 +71,10 @@ void VirtualMachine::runInstruction() {
     copy();
     break;
   case Operation::GetUpvalue:
-    assert(false);
+    getUpvalue();
     break;
   case Operation::SetUpvalue:
-    assert(false);
+    setUpvalue();
     break;
   case Operation::JumpIfFalsy:
     jumpIfFalsy();
@@ -101,6 +100,9 @@ void VirtualMachine::runInstruction() {
   case Operation::Return:
     popFrame();
     break;
+  case Operation::NewClosure:
+    newClosure();
+    break;
   }
 }
 
@@ -125,8 +127,9 @@ void VirtualMachine::callFunction() {
     nativeFunction(arguments);
     break;
   }
-  case Value::Type::Function: {
-    const Function *function{value.data.function};
+  case Value::Type::Closure: {
+    Closure *closure{value.data.closure};
+    const Function *function{closure->function};
     const std::size_t requiredStackSize{frame().base + firstArgumentIndex +
                                         function->registerCount};
 
@@ -134,10 +137,11 @@ void VirtualMachine::callFunction() {
       m_stack.resize(requiredStackSize);
     }
 
-    pushFrame(function, frame().base + firstArgumentIndex);
+    pushFrame(function, closure, frame().base + firstArgumentIndex);
     break;
   }
   default:
+    assert(false && "callFunction called on non-function");
     std::unreachable();
   }
 }
@@ -146,6 +150,22 @@ void VirtualMachine::copy() {
   const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
   const RegisterIndex sourceIndex{frame().instructionReader.readOperand()};
   setRegister(destinationIndex, getRegister(sourceIndex));
+}
+
+void VirtualMachine::getUpvalue() {
+  assert(frame().closure);
+  Value &destination{readOperandRegister()};
+  const Value &upvalue{readOperandUpvalue()};
+
+  destination = upvalue;
+}
+
+void VirtualMachine::setUpvalue() {
+  assert(frame().closure);
+  Value &upvalue{readOperandUpvalue()};
+  const Value value{readOperandRegister()};
+
+  upvalue = value;
 }
 
 void VirtualMachine::jumpIfFalsy() {
@@ -214,6 +234,8 @@ void VirtualMachine::getTable() {
 }
 
 void VirtualMachine::numericForLoop() {
+  Frame &loopFrame{frame()};
+
   const RegisterIndex variableIndex{frame().instructionReader.readOperand()};
   const RegisterIndex endIndex{variableIndex + 1};
   const RegisterIndex incrementIndex{variableIndex + 2};
@@ -221,23 +243,46 @@ void VirtualMachine::numericForLoop() {
 
   const uint8_t *jumpToStartOfLoop{frame().instructionReader.cursor};
   while (true) {
-    const Value variable{getRegister(variableIndex)};
-    const Value end{getRegister(endIndex)};
-    const Value increment{getRegister(incrementIndex)};
+    const Value variable{getRegister(loopFrame, variableIndex)};
+    const Value end{getRegister(loopFrame, endIndex)};
+    const Value increment{getRegister(loopFrame, incrementIndex)};
     if ((increment.data.number > 0 && variable.data.number > end.data.number) ||
         (increment.data.number < 0 && variable.data.number < end.data.number)) {
-      frame().instructionReader.cursor =
-          &frame().function->instructions[jumpAfterLoop];
+      loopFrame.instructionReader.cursor =
+          &loopFrame.function->instructions[jumpAfterLoop];
       return;
     }
 
-    while (frame().instructionReader.cursor !=
-           &frame().function->instructions[jumpAfterLoop]) {
+    while (loopFrame.instructionReader.cursor !=
+           &loopFrame.function->instructions[jumpAfterLoop]) {
       runInstruction();
     }
 
-    frame().instructionReader.cursor = jumpToStartOfLoop;
+    loopFrame.instructionReader.cursor = jumpToStartOfLoop;
     const double newValue{variable.data.number + increment.data.number};
-    setRegister(variableIndex, newValue);
+    getRegister(loopFrame, variableIndex) = newValue;
   }
+}
+
+void VirtualMachine::newClosure() {
+  const RegisterIndex destinationIndex{frame().instructionReader.readOperand()};
+  const RegisterIndex functionIndex{frame().instructionReader.readOperand()};
+  const Function *function{getConstant(functionIndex).data.function};
+
+  std::vector<StackIndex> upvalueIndices(function->upvalues.size());
+  for (std::size_t i{}; i < upvalueIndices.size(); ++i) {
+    const Upvalue &upvalue{function->upvalues[i]};
+
+    StackIndex upvalueIndex{};
+    if (upvalue.inOuterUpvalues) {
+      upvalueIndex = frame().closure->upvalueIndices[upvalue.index];
+    } else {
+      upvalueIndex = stackIndex(frame(), upvalue.index);
+    }
+
+    upvalueIndices[i] = upvalueIndex;
+  }
+
+  Closure *closure{new Closure{function, std::move(upvalueIndices)}};
+  setRegister(destinationIndex, closure);
 }

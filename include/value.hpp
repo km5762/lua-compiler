@@ -1,6 +1,5 @@
 #pragma once
 
-#include "instructions.hpp"
 #include <cmath>
 #include <cstdint>
 #include <format>
@@ -17,9 +16,14 @@ using RegisterIndex = uint64_t;
 using JumpIndex = uint64_t;
 using StringSize = std::size_t;
 using NativeFunction = Value (*)(std::span<Value> arguments);
+using StackIndex = std::size_t;
 
 struct Function;
 struct Table;
+struct Closure {
+  const Function *function{};
+  std::vector<StackIndex> upvalueIndices{};
+};
 
 struct Value {
   enum class Type {
@@ -30,6 +34,7 @@ struct Value {
     NativeFunction,
     Boolean,
     Table,
+    Closure,
   };
 
   Type type{};
@@ -40,6 +45,7 @@ struct Value {
     NativeFunction nativeFunction;
     bool boolean;
     Table *table;
+    Closure *closure;
   } data;
 
   Value() : type{Type::Nil} {};
@@ -51,6 +57,7 @@ struct Value {
   }
   Value(bool boolean) : type{Type::Boolean} { data.boolean = boolean; }
   Value(Table *table) : type{Type::Table} { data.table = table; }
+  Value(Closure *closure) : type{Type::Closure} { data.closure = closure; }
 
   explicit operator bool() const {
     return !(type == Type::Nil || (type == Type::Boolean && !data.boolean));

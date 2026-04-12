@@ -446,9 +446,9 @@ Result<ast::Node *> Parser::parseFunctionDeclaration() {
   if (!token) {
     return std::unexpected{token.error()};
   }
-  Result<ast::Node *> name{makeNode(ast::Name{token->data})};
-  if (!name) {
-    return std::unexpected{name.error()};
+  Result<ast::Node *> identifier{makeNode(ast::Name{token->data})};
+  if (!identifier) {
+    return std::unexpected{identifier.error()};
   }
 
   while (true) {
@@ -463,9 +463,9 @@ Result<ast::Node *> Parser::parseFunctionDeclaration() {
     if (!member) {
       return std::unexpected{member.error()};
     }
-    name = makeNode(ast::Access{*name, member->data});
-    if (!name) {
-      return std::unexpected{name.error()};
+    identifier = makeNode(ast::Access{*identifier, member->data});
+    if (!identifier) {
+      return std::unexpected{identifier.error()};
     }
   }
 
@@ -479,9 +479,9 @@ Result<ast::Node *> Parser::parseFunctionDeclaration() {
     if (!member) {
       return std::unexpected{member.error()};
     }
-    name = makeNode(ast::Access{*name, member->data});
-    if (!name) {
-      return std::unexpected{name.error()};
+    identifier = makeNode(ast::Access{*identifier, member->data});
+    if (!identifier) {
+      return std::unexpected{identifier.error()};
     }
     function = parseFunction("self");
   } else {
@@ -492,10 +492,10 @@ Result<ast::Node *> Parser::parseFunctionDeclaration() {
     return std::unexpected{function.error()};
   }
 
-  ast::List<> variables{makeList({*name})};
+  ast::List<> variables{makeList({*identifier})};
   ast::List<> values{makeList({*function})};
 
-  return makeNode(ast::Assignment{std::move(variables), std::move(values)});
+  return makeNode(ast::FunctionDeclaration{*identifier, *function});
 }
 
 Result<ast::Node *>
@@ -668,9 +668,6 @@ Result<ast::List<>> Parser::parseVariableList(ast::Node *first) {
 ast::Node *Parser::makeNode(ast::Data &&data) {
   void *buffer =
       m_allocator.get().allocate(sizeof(ast::Node), alignof(ast::Node));
-  if (!buffer) {
-    throw std::bad_alloc{};
-  }
 
   return new (buffer) ast::Node{std::move(data)};
 }

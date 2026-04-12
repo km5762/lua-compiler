@@ -1,7 +1,5 @@
 #pragma once
 
-#include "value.hpp"
-
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -34,6 +32,7 @@ enum class Operation : uint8_t {
   GetTable,
   NumericForLoop,
   Return,
+  NewClosure,
 };
 
 std::string toString(Operation operation);

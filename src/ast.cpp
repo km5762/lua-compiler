@@ -135,6 +135,11 @@ struct Visitor {
   void operator()(const TableConstructor &node) {
     json[NodeName<TableConstructor>::value] = {{"fields", toJson(node.fields)}};
   }
+  void operator()(const FunctionDeclaration &node) {
+    json[NodeName<FunctionDeclaration>::value] = {
+        {"identifier", node.identifier->toJson()},
+        {"function", node.function->toJson()}};
+  }
 };
 } // namespace
 

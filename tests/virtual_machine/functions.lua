@@ -1,9 +1,9 @@
-function add(a, b)
-	return a + b
+function factorial(n)
+	if n == 0 then
+		return 1 -- Base case
+	else
+		return n * factorial(n - 1) -- Recursive step
+	end
 end
 
-local a = 1
-local b = 2
-assert((a + b) == add(a, b), "add function")
-
-print(add(4, 2))
+print(factorial(8))

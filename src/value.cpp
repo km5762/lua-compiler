@@ -22,6 +22,8 @@ Value Value::operator==(Value other) const {
     return data.boolean == other.data.boolean;
   case Type::Table:
     return data.table == other.data.table;
+  case Type::Closure:
+    return data.closure == other.data.closure;
   }
 }
 
@@ -50,6 +52,10 @@ std::string Value::toString() const {
     break;
   case Type::Table:
     return "table: " + std::to_string(reinterpret_cast<uintptr_t>(data.table));
+    break;
+  case Type::Closure:
+    return "closure: " +
+           std::to_string(reinterpret_cast<uintptr_t>(data.closure));
     break;
   }
 }
@@ -93,5 +99,9 @@ std::size_t Value::hash() const {
     std::hash<Table *> hasher{};
     return hasher(data.table);
   }
+  case Type::Closure:
+    std::hash<Closure *> hasher{};
+    return hasher(data.closure);
+    break;
   }
 }

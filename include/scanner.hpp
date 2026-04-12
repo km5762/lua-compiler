@@ -86,9 +86,6 @@ private:
     std::size_t size{m_cursor - m_startCursor};
     char *string{
         static_cast<char *>(m_allocator.get().allocate(size, alignof(char)))};
-    if (!string) {
-      throw std::bad_alloc{};
-    }
     std::memcpy(string, &m_text[m_startCursor], size);
 
     return Token{type, {string, size}, m_startLine, m_startPosition};
